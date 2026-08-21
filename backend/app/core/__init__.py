@@ -1,0 +1,1 @@
+"""Core package — intelligence engine."""
