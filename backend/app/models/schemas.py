@@ -3,7 +3,7 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 # ─── Repository ──────────────────────────────────────────────────────────
@@ -30,6 +30,21 @@ class RepoResponse(BaseModel):
     languages: list[str]
     created_at: datetime
     indexed_at: datetime | None
+
+    @field_validator("languages", mode="before")
+    @classmethod
+    def parse_languages(cls, v: Any) -> list[str]:
+        if isinstance(v, str):
+            if not v:
+                return []
+            import json
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return []
+        if isinstance(v, list):
+            return v
+        return []
 
     model_config = {"from_attributes": True}
 
