@@ -63,20 +63,20 @@ export default function RepoWorkspace() {
     <div className="flex flex-col h-full w-full bg-[#0c0c0c]">
       {/* Sub Navbar */}
       <div className="h-12 border-b border-white/5 bg-[#111111] shrink-0 flex items-center px-4 justify-between">
-        <div className="flex items-center gap-2 text-sm">
-          <span className="text-zinc-500 font-mono">RepoMind</span>
-          <span className="text-zinc-600">/</span>
-          <span className="text-white font-medium tracking-tight">{repo.name}</span>
+        <div className="flex items-center gap-2 text-sm truncate pr-4">
+          <span className="text-zinc-500 font-mono hidden sm:inline">RepoMind</span>
+          <span className="text-zinc-600 hidden sm:inline">/</span>
+          <span className="text-white font-medium tracking-tight truncate">{repo.name}</span>
         </div>
-        <div className="flex items-center gap-2 text-xs">
+        <div className="flex items-center gap-2 text-xs shrink-0">
           <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
-          <span className="text-zinc-400 capitalize">{repo.status}</span>
+          <span className="text-zinc-400 capitalize hidden sm:inline">{repo.status}</span>
         </div>
       </div>
 
-      <div className="flex-1 flex overflow-hidden relative">
-        {/* Left sidebar: Tabbed */}
-        <div className="w-[400px] shrink-0 border-r border-white/5 bg-[#111111] flex flex-col z-10">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden relative">
+        {/* Left sidebar: Tabbed (Full width on mobile, 400px on desktop) */}
+        <div className="w-full md:w-[400px] h-[50vh] md:h-full shrink-0 border-b md:border-b-0 md:border-r border-white/5 bg-[#111111] flex flex-col z-10">
           <div className="flex items-center p-2 border-b border-white/5 gap-1 shrink-0">
             <button
               onClick={() => setActiveTab("chat")}
@@ -95,19 +95,19 @@ export default function RepoWorkspace() {
               <BarChart2 className="w-3.5 h-3.5" /> Analytics
             </button>
           </div>
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden relative">
             {activeTab === "chat" ? <ChatPanel repoId={repoId} /> : <OverviewPanel repo={repo} />}
           </div>
         </div>
         
         {/* Middle: Graph Canvas */}
-        <div className="flex-1 relative bg-[#0c0c0c]">
+        <div className="flex-1 relative bg-[#0c0c0c] min-h-[50vh] md:min-h-0">
           <CodeGraph repoId={repoId} />
         </div>
         
         {/* Right sidebar: Inspector */}
         {isInspectorOpen && (
-          <div className="w-[500px] shrink-0 border-l border-white/5 bg-[#111111]/95 backdrop-blur-xl shadow-2xl z-20 absolute right-0 top-0 h-full">
+          <div className="w-full md:w-[500px] shrink-0 border-t md:border-t-0 md:border-l border-white/5 bg-[#111111]/95 backdrop-blur-xl shadow-2xl z-20 absolute md:right-0 bottom-0 md:top-0 h-[60vh] md:h-full">
             <NodeInspector />
           </div>
         )}

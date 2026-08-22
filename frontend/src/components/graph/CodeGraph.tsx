@@ -19,27 +19,28 @@ import { getGraph } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { Box, Code2, Database, Layout } from "lucide-react";
 
-// --- Custom Node Component ---
-const CustomSymbolNode = ({ data }: { data: any }) => {
+const CustomSymbolNode = ({ data, selected }: { data: any, selected?: boolean }) => {
   const Icon = data.symbol_type === "class" ? Box :
                data.symbol_type === "function" ? Code2 :
                data.symbol_type === "endpoint" ? Layout : Database;
 
   return (
-    <div className="px-4 py-2 shadow-xl rounded-lg bg-card border-2 border-border min-w-[150px] relative transition-transform hover:scale-105 hover:border-primary">
-      <Handle type="target" position={Position.Top} className="w-2 h-2 !bg-primary" />
-      <div className="flex items-center gap-2">
-        <Icon className="w-4 h-4 text-primary" />
-        <div>
-          <div className="font-mono text-xs font-bold text-foreground max-w-[200px] truncate" title={data.label}>
+    <div className={`px-4 py-3 shadow-xl rounded-xl bg-[#111111] border transition-all duration-300 min-w-[180px] relative group ${selected ? 'border-indigo-500/50 shadow-[0_0_15px_rgba(99,102,241,0.2)]' : 'border-white/10 hover:border-white/30'}`}>
+      <Handle type="target" position={Position.Top} className="w-2.5 h-2.5 !bg-indigo-500 !border-2 !border-[#111111] transition-transform group-hover:scale-125" />
+      <div className="flex items-center gap-3">
+        <div className="w-8 h-8 rounded-md bg-white/5 border border-white/5 flex items-center justify-center shrink-0">
+          <Icon className="w-4 h-4 text-zinc-400 group-hover:text-white transition-colors" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-mono text-xs font-semibold text-white max-w-[180px] truncate" title={data.label}>
             {data.label}
           </div>
-          <div className="text-[10px] text-muted-foreground uppercase mt-0.5">
+          <div className="text-[10px] text-zinc-500 uppercase tracking-widest mt-0.5 font-medium">
             {data.symbol_type}
           </div>
         </div>
       </div>
-      <Handle type="source" position={Position.Bottom} className="w-2 h-2 !bg-primary" />
+      <Handle type="source" position={Position.Bottom} className="w-2.5 h-2.5 !bg-indigo-500 !border-2 !border-[#111111] transition-transform group-hover:scale-125" />
     </div>
   );
 };
