@@ -60,70 +60,80 @@ export default function ChatPanel({ repoId }: { repoId: number }) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-card/80 backdrop-blur-md">
-      <div className="p-4 border-b border-border bg-card">
-        <h2 className="font-semibold flex items-center gap-2">
-          <Bot className="w-5 h-5 text-primary" />
-          Intelligence Agent
+    <div className="flex flex-col h-full bg-black border-l border-zinc-900 font-mono text-sm">
+      <div className="p-4 border-b border-zinc-900 bg-black flex items-center justify-between">
+        <h2 className="text-zinc-300 font-medium tracking-tight">
+          intelligence
         </h2>
+        <div className="flex items-center gap-2">
+          <div className="w-1.5 h-1.5 rounded-full bg-zinc-500 animate-pulse" />
+          <span className="text-xs text-zinc-600">ready</span>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 space-y-8">
         {messages.map((msg) => (
-          <div key={msg.id} className={cn("flex gap-3", msg.role === "user" ? "flex-row-reverse" : "")}>
-            <div className={cn("w-8 h-8 rounded-full flex items-center justify-center shrink-0", 
-              msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-            )}>
-              {msg.role === "user" ? <User size={16} /> : <Bot size={16} />}
+          <div key={msg.id} className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-zinc-600">
+              {msg.role === "user" ? <User size={12} /> : <Bot size={12} />}
+              <span>{msg.role === "user" ? "user" : "system"}</span>
             </div>
             
-            <div className={cn("flex flex-col max-w-[85%]", msg.role === "user" ? "items-end" : "items-start")}>
-              <div className={cn("px-4 py-2.5 whitespace-pre-wrap text-sm", 
-                msg.role === "user" ? "bg-white text-black rounded-l-xl rounded-tr-xl" : "bg-zinc-900 text-zinc-100 rounded-r-xl rounded-tl-xl border border-zinc-800"
-              )}>
-                {msg.content}
-              </div>
-              
-              {msg.flow && (
-                <div className="mt-2 bg-black border border-zinc-800 rounded-xl p-4 w-full cursor-pointer hover:border-zinc-600 transition-colors group">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-white mb-2">
-                    <Play size={12} className="group-hover:translate-x-1 transition-transform" />
-                    Generated Flow Diagram
-                  </div>
-                  <div className="text-xs text-zinc-500">
-                    {msg.flow.nodes.length} nodes, {msg.flow.edges.length} edges
-                  </div>
-                </div>
-              )}
+            <div className={cn("text-sm leading-relaxed", 
+              msg.role === "user" ? "text-zinc-300" : "text-white"
+            )}>
+              {msg.content}
             </div>
+            
+            {msg.flow && (
+              <div className="mt-4 border-l border-zinc-800 pl-4 py-2 cursor-pointer hover:border-zinc-500 transition-colors group">
+                <div className="flex items-center gap-2 text-xs text-zinc-400 mb-1">
+                  <Play size={10} className="group-hover:text-white transition-colors" />
+                  FLOW DATA
+                </div>
+                <div className="text-xs text-zinc-600">
+                  [{msg.flow.nodes.length} nodes, {msg.flow.edges.length} edges]
+                </div>
+              </div>
+            )}
           </div>
         ))}
         {loading && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center shrink-0">
-              <Loader2 size={16} className="animate-spin text-muted-foreground" />
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-zinc-600">
+              <Bot size={12} />
+              <span>system</span>
+            </div>
+            <div className="flex items-center gap-2 text-sm text-zinc-500">
+              <Loader2 size={12} className="animate-spin" />
+              <span>computing...</span>
             </div>
           </div>
         )}
         <div ref={bottomRef} />
       </div>
 
-      <div className="p-4 bg-card border-t border-border">
-        <form onSubmit={handleSubmit} className="relative">
+      <div className="p-4 border-t border-zinc-900 bg-black">
+        <form onSubmit={handleSubmit} className="relative flex items-center">
+          <div className="absolute left-0 text-zinc-700">
+            &gt;
+          </div>
           <input
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about architecture, bugs, or flows..."
-            className="w-full bg-input border border-border rounded-full pl-4 pr-12 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent transition-all shadow-inner"
+            placeholder="Query codebase..."
+            className="w-full bg-transparent border-0 pl-6 pr-10 py-2 text-sm text-white placeholder:text-zinc-700 focus:outline-none focus:ring-0"
             disabled={loading}
+            autoComplete="off"
+            spellCheck="false"
           />
           <button
             type="submit"
             disabled={!input.trim() || loading}
-            className="absolute right-2 top-2 p-1.5 bg-primary text-primary-foreground rounded-full hover:opacity-90 transition-opacity disabled:opacity-50"
+            className="absolute right-0 p-1 text-zinc-600 hover:text-white transition-colors disabled:opacity-50"
           >
-            <Send size={16} />
+            <Send size={14} />
           </button>
         </form>
       </div>
