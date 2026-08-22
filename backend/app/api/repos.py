@@ -39,7 +39,7 @@ async def import_repository(
     )
     existing = result.scalar_one_or_none()
     if existing:
-        if existing.status in (RepoStatus.PENDING, RepoStatus.CLONING, RepoStatus.PARSING, RepoStatus.BUILDING_GRAPH, RepoStatus.MINING_GIT, RepoStatus.EMBEDDING):
+        if existing.status in (RepoStatus.CLONING, RepoStatus.PARSING, RepoStatus.BUILDING_GRAPH, RepoStatus.MINING_GIT, RepoStatus.EMBEDDING):
             return existing
         # Re-index
         existing.status = RepoStatus.PENDING
