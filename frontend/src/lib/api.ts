@@ -16,6 +16,12 @@ export async function getRepo(id: number) {
   return res.json();
 }
 
+export async function getRepos() {
+  const res = await fetch(`${API_BASE}/repos`);
+  if (!res.ok) throw new Error("Failed to get repos");
+  return res.json();
+}
+
 export async function getGraph(repoId: number) {
   const res = await fetch(`${API_BASE}/graph/${repoId}`);
   if (!res.ok) throw new Error("Failed to get graph");

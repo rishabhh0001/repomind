@@ -4,10 +4,11 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { getRepo } from "@/lib/api";
 import { useStore } from "@/lib/store";
-import { Loader2 } from "lucide-react";
+import { Loader2, MessageSquare, BarChart2 } from "lucide-react";
 import CodeGraph from "@/components/graph/CodeGraph";
 import NodeInspector from "@/components/inspector/NodeInspector";
 import ChatPanel from "@/components/chat/ChatPanel";
+import OverviewPanel from "@/components/inspector/OverviewPanel";
 
 export default function RepoWorkspace() {
   const params = useParams();
@@ -17,6 +18,7 @@ export default function RepoWorkspace() {
   
   const [repo, setRepo] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<"chat" | "overview">("chat");
 
   useEffect(() => {
     setCurrentRepoId(repoId);
@@ -40,41 +42,76 @@ export default function RepoWorkspace() {
 
   if (loading || (repo && repo.status !== "ready" && repo.status !== "error")) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center space-y-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <h2 className="text-xl font-semibold">Indexing Repository...</h2>
-        <p className="text-muted-foreground capitalize">Status: {repo?.status || "Starting"}</p>
+      <div className="flex h-full w-full flex-col items-center justify-center space-y-4 bg-[#0c0c0c] text-white">
+        <Loader2 className="h-10 w-10 animate-spin text-zinc-500" />
+        <h2 className="text-xl font-semibold tracking-tight">Indexing Repository...</h2>
+        <p className="text-zinc-500 capitalize text-sm">Status: {repo?.status || "Starting"}</p>
       </div>
     );
   }
 
   if (repo?.status === "error") {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center space-y-4">
-        <div className="text-destructive text-xl font-bold">Indexing Failed</div>
-        <p className="text-muted-foreground max-w-md text-center">{repo.error_message}</p>
+      <div className="flex h-full w-full flex-col items-center justify-center space-y-4 bg-[#0c0c0c] text-white">
+        <div className="text-red-500 text-xl font-bold tracking-tight">Indexing Failed</div>
+        <p className="text-zinc-500 max-w-md text-center text-sm">{repo.error_message}</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full w-full">
-      {/* Left sidebar: Chat */}
-      <div className="w-[400px] shrink-0 border-r border-border bg-card/30 flex flex-col z-10 shadow-2xl">
-        <ChatPanel repoId={repoId} />
-      </div>
-      
-      {/* Middle: Graph Canvas */}
-      <div className="flex-1 relative bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-background to-background/50">
-        <CodeGraph repoId={repoId} />
-      </div>
-      
-      {/* Right sidebar: Inspector */}
-      {isInspectorOpen && (
-        <div className="w-[500px] shrink-0 border-l border-border bg-card/95 backdrop-blur-xl shadow-2xl z-20 absolute right-0 top-0 h-full">
-          <NodeInspector />
+    <div className="flex flex-col h-full w-full bg-[#0c0c0c]">
+      {/* Sub Navbar */}
+      <div className="h-12 border-b border-white/5 bg-[#111111] shrink-0 flex items-center px-4 justify-between">
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-zinc-500 font-mono">RepoMind</span>
+          <span className="text-zinc-600">/</span>
+          <span className="text-white font-medium tracking-tight">{repo.name}</span>
         </div>
-      )}
+        <div className="flex items-center gap-2 text-xs">
+          <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]" />
+          <span className="text-zinc-400 capitalize">{repo.status}</span>
+        </div>
+      </div>
+
+      <div className="flex-1 flex overflow-hidden relative">
+        {/* Left sidebar: Tabbed */}
+        <div className="w-[400px] shrink-0 border-r border-white/5 bg-[#111111] flex flex-col z-10">
+          <div className="flex items-center p-2 border-b border-white/5 gap-1 shrink-0">
+            <button
+              onClick={() => setActiveTab("chat")}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                activeTab === "chat" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+              }`}
+            >
+              <MessageSquare className="w-3.5 h-3.5" /> Chat
+            </button>
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`flex-1 flex items-center justify-center gap-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                activeTab === "overview" ? "bg-white/10 text-white" : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" /> Analytics
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            {activeTab === "chat" ? <ChatPanel repoId={repoId} /> : <OverviewPanel repo={repo} />}
+          </div>
+        </div>
+        
+        {/* Middle: Graph Canvas */}
+        <div className="flex-1 relative bg-[#0c0c0c]">
+          <CodeGraph repoId={repoId} />
+        </div>
+        
+        {/* Right sidebar: Inspector */}
+        {isInspectorOpen && (
+          <div className="w-[500px] shrink-0 border-l border-white/5 bg-[#111111]/95 backdrop-blur-xl shadow-2xl z-20 absolute right-0 top-0 h-full">
+            <NodeInspector />
+          </div>
+        )}
+      </div>
     </div>
   );
 }
