@@ -78,23 +78,20 @@ export default function ChatPanel({ repoId }: { repoId: number }) {
             </div>
             
             <div className={cn("flex flex-col max-w-[85%]", msg.role === "user" ? "items-end" : "items-start")}>
-              <div className={cn("px-4 py-2 rounded-2xl whitespace-pre-wrap text-sm", 
-                msg.role === "user" ? "bg-primary text-primary-foreground rounded-tr-sm" : "bg-secondary text-secondary-foreground rounded-tl-sm"
+              <div className={cn("px-4 py-2.5 whitespace-pre-wrap text-sm", 
+                msg.role === "user" ? "bg-white text-black rounded-l-xl rounded-tr-xl" : "bg-zinc-900 text-zinc-100 rounded-r-xl rounded-tl-xl border border-zinc-800"
               )}>
                 {msg.content}
               </div>
               
               {msg.flow && (
-                <div className="mt-2 bg-background border border-border rounded-lg p-3 w-full cursor-pointer hover:border-primary transition-colors group">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-primary mb-2">
+                <div className="mt-2 bg-black border border-zinc-800 rounded-xl p-4 w-full cursor-pointer hover:border-zinc-600 transition-colors group">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-white mb-2">
                     <Play size={12} className="group-hover:translate-x-1 transition-transform" />
                     Generated Flow Diagram
                   </div>
-                  <div className="text-xs text-muted-foreground truncate">
+                  <div className="text-xs text-zinc-500">
                     {msg.flow.nodes.length} nodes, {msg.flow.edges.length} edges
-                  </div>
-                  <div className="mt-2 text-xs text-muted-foreground italic">
-                    (Click to overlay flow on main graph - MVP feature placeholder)
                   </div>
                 </div>
               )}

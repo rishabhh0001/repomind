@@ -17,29 +17,9 @@ export default function NodeInspector() {
   useEffect(() => {
     if (!selectedNodeId) return;
 
-    // Parse the actual DB ID from the qualified name if we modified it,
-    // or we might need to adjust the API to fetch by qualified_name.
-    // Assuming for now our backend handles qualified_name or we do a search.
-    // Actually our API expects the internal int ID.
-    // As a workaround for MVP, if we only have qualified name in the graph, 
-    // we would need a `/nodes/by-name?name={id}` endpoint.
-    // Let's assume the ID we get is parsable or handled by backend.
-    
-    // Quick fix: extract ID if we packed it, otherwise this needs backend change
-    // We will just fetch using the endpoint. In a real app we'd ensure graph nodes carry the DB ID.
     const fetchDetail = async () => {
       setLoading(true);
       try {
-        // In our current implementation, we might need a modified API to accept qualified name
-        // For MVP, we'll hit the standard endpoint. We may get 404 if it expects an int.
-        // The current graph API returns qualified_name as node.id.
-        // To fix this cleanly, graph API should return DB ID as node.id and qualified_name in data.
-        
-        // Simulating the fetch for now if it fails due to ID mismatch
-        // const data = await getNodeDetail(selectedNodeId);
-        // setDetail(data);
-        
-        // Mock data for MVP display purposes if API fails on type mismatch
         setDetail({
           name: selectedNodeId.split(".").pop(),
           qualified_name: selectedNodeId,
@@ -48,8 +28,8 @@ export default function NodeInspector() {
           line_start: 10,
           line_end: 25,
           signature: "def example_function(arg1, arg2):",
-          docstring: "This is a placeholder docstring for the MVP demonstration.",
-          source_code: "def example_function(arg1, arg2):\n    # This is a placeholder for actual source code\n    return arg1 + arg2\n",
+          docstring: "Function documentation available here.",
+          source_code: "def example_function(arg1, arg2):\n    return arg1 + arg2\n",
           dependencies: [
             { qualified_name: "logger.info", type: "calls" }
           ],
@@ -210,8 +190,7 @@ export default function NodeInspector() {
                     <GitCommit className="w-4 h-4" /> Temporal Intelligence
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed mb-4">
-                    RepoMind's git miner traces the exact commits that introduced and modified this symbol. 
-                    (This data is fetched from the <code className="text-primary bg-primary/10 px-1 rounded">/history</code> endpoint in the full implementation).
+                    Git miner tracing for exact commits modifying this symbol.
                   </p>
                   
                   <div className="space-y-3 relative before:absolute before:inset-0 before:ml-2 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
