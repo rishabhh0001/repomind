@@ -23,9 +23,10 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # LLM Provider
-    llm_provider: Literal["gemini", "openai", "ollama"] = "gemini"
+    llm_provider: Literal["gemini", "openai", "ollama", "nvidia"] = "gemini"
     gemini_api_key: str = ""
     openai_api_key: str = ""
+    nvidia_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.1"
 

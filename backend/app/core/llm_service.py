@@ -83,6 +83,8 @@ class LLMService:
             raw_response = await self._gemini_query(prompt, user_message)
         elif self.provider == "openai":
             raw_response = await self._openai_query(prompt, user_message)
+        elif self.provider == "nvidia":
+            raw_response = await self._nvidia_query(prompt, user_message)
         elif self.provider == "ollama":
             raw_response = await self._ollama_query(prompt, user_message)
         else:
@@ -163,6 +165,25 @@ Also provide a human-readable summary of the impact."""
         response = await self._client.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message},
+                ],
+                "max_tokens": 4096,
+                "temperature": 0.3,
+            },
+        )
+        response.raise_for_status()
+        data = response.json()
+        return data["choices"][0]["message"]["content"]
+
+    async def _nvidia_query(self, system_prompt: str, user_message: str) -> str:
+        """Query Nvidia NIM (OpenAI compatible)."""
+        response = await self._client.post(
+            "https://integrate.api.nvidia.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {settings.nvidia_api_key}"},
             json={
                 "model": self.model,
                 "messages": [
