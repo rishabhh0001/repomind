@@ -143,7 +143,7 @@ class Indexer:
             await db.commit()
 
             git_miner = GitMiner(repo_path)
-            commits = git_miner.mine_commits(max_commits=2000)
+            commits = git_miner.mine_commits(max_commits=100)
             await self._store_commits(db, repo_id, commits)
 
             await progress.update(
