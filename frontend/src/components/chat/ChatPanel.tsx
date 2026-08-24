@@ -57,7 +57,7 @@ export default function ChatPanel({ repoId }: { repoId: number }) {
       setMessages((prev) => [...prev, {
         id: Date.now().toString(),
         role: "assistant",
-        content: "Sorry, I encountered an error while analyzing the codebase. Please check if your API keys are configured correctly."
+        content: "Sorry, I encountered an error while analyzing the codebase. Please check if everything is configured correctly."
       }]);
     } finally {
       setLoading(false);
