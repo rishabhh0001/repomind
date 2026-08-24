@@ -17,7 +17,7 @@ export default function ChatPanel({ repoId }: { repoId: number }) {
     {
       id: "1",
       role: "assistant",
-      content: "Hello! I'm RepoMind. Ask me anything about the architecture, flows, or specific functions in this repository."
+      content: "Hello! I'm RepoMind AI. Ask me anything about the architecture, flows, or specific functions in this repository."
     }
   ]);
   const [input, setInput] = useState("");
