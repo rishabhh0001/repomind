@@ -110,7 +110,7 @@ class LLMService:
         raw_response = ""
         try:
             if resolved_provider == "nvidia":
-                nvidia_model = self.model if "/" in self.model else "meta/llama-3.1-70b-instruct"
+                nvidia_model = self.model if "/" in self.model else "nvidia/nemotron-3-ultra-550b-a55b"
                 raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
             elif resolved_provider == "openai":
                 raw_response = await self._openai_query(prompt, user_message)
@@ -239,17 +239,18 @@ Also provide a human-readable summary of the impact."""
         return data["choices"][0]["message"]["content"]
 
     async def _nvidia_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
-        """Query Nvidia NIM (OpenAI compatible)."""
+        """Query Nvidia NIM (OpenAI compatible). Supports reasoning models like Nemotron Ultra."""
+        use_model = model or self.model
         response = await self._client.post(
             "https://integrate.api.nvidia.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {settings.nvidia_api_key}"},
             json={
-                "model": model or self.model,
+                "model": use_model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
                 ],
-                "max_tokens": 4096,
+                "max_tokens": 16384,
                 "temperature": 0.3,
             },
         )
@@ -259,7 +260,10 @@ Also provide a human-readable summary of the impact."""
             raise RuntimeError(f"NVIDIA NIM error ({response.status_code}): {error_body}")
 
         data = response.json()
-        return data["choices"][0]["message"]["content"]
+        message = data["choices"][0]["message"]
+        # Nemotron Ultra returns reasoning_content separately from content
+        content = message.get("content", "") or ""
+        return content
 
     async def _ollama_query(self, system_prompt: str, user_message: str) -> str:
         """Query local Ollama."""
