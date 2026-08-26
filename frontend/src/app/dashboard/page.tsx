@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { importRepo, getRepos } from "@/lib/api";
-import { ArrowRight, Loader2, GitBranch, Search, Server, Clock, GitCommit } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { Input } from "@/components/ui/input";
 import { formatDistanceToNow } from "date-fns";
 
@@ -48,9 +49,20 @@ export default function Dashboard() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "ready": return "bg-green-500";
+      case "ready": return "bg-emerald-500";
       case "error": return "bg-red-500";
-      default: return "bg-yellow-500 animate-pulse";
+      default: return "bg-amber-500 animate-pulse";
+    }
+  };
+
+  const formatDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return "recently";
+    try {
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return "recently";
+      return `${formatDistanceToNow(d)} ago`;
+    } catch {
+      return "recently";
     }
   };
 
@@ -62,8 +74,8 @@ export default function Dashboard() {
         <section className="space-y-4">
           <h1 className="text-2xl font-semibold tracking-tight">Deploy new repository</h1>
           <form onSubmit={handleSubmit} className="relative flex items-center group max-w-2xl">
-            <div className="absolute left-4 text-zinc-500">
-              <GitBranch className="w-5 h-5" />
+            <div className="absolute left-4 text-zinc-500 flex items-center">
+              <MaterialIcon name="fork_right" size={20} />
             </div>
             <Input 
               id="url"
@@ -79,9 +91,16 @@ export default function Dashboard() {
             <button 
               type="submit" 
               disabled={loading || !url.trim()}
-              className="absolute right-2 h-10 px-4 flex items-center justify-center bg-white text-black hover:bg-zinc-200 rounded-lg disabled:opacity-50 transition-colors font-medium text-sm"
+              className="absolute right-2 h-10 px-4 flex items-center justify-center bg-white text-black hover:bg-zinc-200 rounded-lg disabled:opacity-50 transition-colors font-medium text-sm gap-1"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Import"}
+              {loading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <>
+                  <span>Import</span>
+                  <MaterialIcon name="arrow_forward" size={16} />
+                </>
+              )}
             </button>
           </form>
           {error && <p className="text-red-400 text-sm">{error}</p>}
@@ -91,8 +110,8 @@ export default function Dashboard() {
         <section className="space-y-6">
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <h2 className="text-xl font-medium tracking-tight">Your Projects</h2>
-            <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+            <div className="relative flex items-center">
+              <MaterialIcon name="search" size={18} className="absolute left-3 text-zinc-500" />
               <input 
                 type="text" 
                 placeholder="Search projects..." 
@@ -103,11 +122,11 @@ export default function Dashboard() {
 
           {loadingRepos ? (
             <div className="flex items-center justify-center py-20 text-zinc-500">
-              <Loader2 className="w-6 h-6 animate-spin" />
+              <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
             </div>
           ) : repos.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-zinc-500 border border-dashed border-white/10 rounded-xl bg-[#111111]/50">
-              <Server className="w-8 h-8 mb-4 opacity-50" />
+              <MaterialIcon name="dns" size={32} className="mb-4 opacity-50 text-indigo-400" />
               <p className="text-sm">No repositories imported yet.</p>
             </div>
           ) : (
@@ -130,17 +149,17 @@ export default function Dashboard() {
                     </div>
                     
                     <h3 className="text-lg font-medium tracking-tight mb-1 truncate">{repo.name}</h3>
-                    <p className="text-xs text-zinc-500 truncate">{repo.url.replace("https://github.com/", "")}</p>
+                    <p className="text-xs text-zinc-500 truncate">{repo.url ? repo.url.replace("https://github.com/", "") : "Local Repo"}</p>
                   </div>
 
                   <div className="flex items-center gap-4 text-xs text-zinc-500 mt-6 border-t border-white/5 pt-4">
                     <div className="flex items-center gap-1.5" title="Commits indexed">
-                      <GitCommit className="w-3.5 h-3.5" />
-                      {repo.total_commits}
+                      <MaterialIcon name="commit" size={16} className="text-indigo-400" />
+                      <span>{repo.total_commits || 0}</span>
                     </div>
                     <div className="flex items-center gap-1.5" title="Time elapsed since import">
-                      <Clock className="w-3.5 h-3.5" />
-                      {formatDistanceToNow(new Date(repo.created_at))} ago
+                      <MaterialIcon name="schedule" size={16} className="text-zinc-500" />
+                      <span>{formatDate(repo.created_at)}</span>
                     </div>
                   </div>
                 </div>

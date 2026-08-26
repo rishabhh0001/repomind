@@ -82,17 +82,23 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     )
 
 
-@router.get("/nodes/{symbol_id}", response_model=SymbolDetail)
-async def get_node_detail(symbol_id: int, db: AsyncSession = Depends(get_db)) -> SymbolDetail:
-    """Get detailed information about a single code symbol."""
-    result = await db.execute(
+@router.get("/nodes/{symbol_id_or_name:path}", response_model=SymbolDetail)
+async def get_node_detail(symbol_id_or_name: str, db: AsyncSession = Depends(get_db)) -> SymbolDetail:
+    """Get detailed information about a single code symbol by ID or qualified_name."""
+    stmt = (
         select(Symbol)
-        .where(Symbol.id == symbol_id)
         .options(
             selectinload(Symbol.outgoing_edges).selectinload(Edge.target),
             selectinload(Symbol.incoming_edges).selectinload(Edge.source),
+            selectinload(Symbol.symbol_commits).selectinload(SymbolCommit.commit),
         )
     )
+    if symbol_id_or_name.isdigit():
+        stmt = stmt.where(Symbol.id == int(symbol_id_or_name))
+    else:
+        stmt = stmt.where(Symbol.qualified_name == symbol_id_or_name)
+
+    result = await db.execute(stmt)
     symbol = result.scalar_one_or_none()
     if not symbol:
         raise HTTPException(status_code=404, detail="Symbol not found")
@@ -119,6 +125,22 @@ async def get_node_detail(symbol_id: int, db: AsyncSession = Depends(get_db)) ->
         if edge.source
     ]
 
+    commits = []
+    if symbol.symbol_commits:
+        for sc in symbol.symbol_commits:
+            if sc.commit:
+                commits.append({
+                    "sha": sc.commit.sha,
+                    "author_name": sc.commit.author_name or "Unknown",
+                    "author_email": sc.commit.author_email or "",
+                    "message": sc.commit.message or "",
+                    "committed_at": sc.commit.committed_at.isoformat() if sc.commit.committed_at else None,
+                    "is_introduction": bool(sc.is_introduction),
+                    "files_changed": sc.commit.files_changed or 0,
+                    "insertions": sc.commit.insertions or 0,
+                    "deletions": sc.commit.deletions or 0,
+                })
+
     return SymbolDetail(
         id=symbol.id,
         name=symbol.name,
@@ -133,4 +155,5 @@ async def get_node_detail(symbol_id: int, db: AsyncSession = Depends(get_db)) ->
         source_code=symbol.source_code,
         dependencies=dependencies,
         dependents=dependents,
+        commits=commits,
     )

@@ -56,6 +56,40 @@ class LLMService:
         self.model = settings.llm_model
         self._client = httpx.AsyncClient(timeout=120.0)
 
+    def _resolve_provider(self) -> str:
+        """Resolve LLM provider based on settings, model name, and available API keys."""
+        # 1. If explicit provider is set and configured with key
+        if self.provider == "nvidia" and settings.nvidia_api_key:
+            return "nvidia"
+        if self.provider == "gemini" and settings.gemini_api_key and "gemini" in self.model.lower():
+            return "gemini"
+        if self.provider == "openai" and settings.openai_api_key:
+            return "openai"
+        if self.provider == "ollama":
+            return "ollama"
+
+        # 2. Auto-detect by model name
+        if "/" in self.model or self.model.startswith("meta/") or self.model.startswith("nvidia/") or self.model.startswith("mistralai/"):
+            if settings.nvidia_api_key:
+                return "nvidia"
+            elif settings.openai_api_key:
+                return "openai"
+
+        if "gemini" in self.model.lower() and settings.gemini_api_key:
+            return "gemini"
+
+        # 3. Fallback based on available keys
+        if settings.nvidia_api_key and "/" in self.model:
+            return "nvidia"
+        if settings.gemini_api_key:
+            return "gemini"
+        if settings.openai_api_key:
+            return "openai"
+        if settings.nvidia_api_key:
+            return "nvidia"
+
+        return self.provider
+
     async def query(
         self,
         question: str,
@@ -79,16 +113,34 @@ class LLMService:
 
 {question}"""
 
-        if self.provider == "gemini":
-            raw_response = await self._gemini_query(prompt, user_message)
-        elif self.provider == "openai":
-            raw_response = await self._openai_query(prompt, user_message)
-        elif self.provider == "nvidia":
-            raw_response = await self._nvidia_query(prompt, user_message)
-        elif self.provider == "ollama":
-            raw_response = await self._ollama_query(prompt, user_message)
-        else:
-            raise ValueError(f"Unknown LLM provider: {self.provider}")
+        resolved_provider = self._resolve_provider()
+        logger.info(f"Routing query with provider={resolved_provider}, model={self.model}")
+
+        raw_response = ""
+        try:
+            if resolved_provider == "gemini":
+                # Ensure model is valid for Gemini if fallback needed
+                gemini_model = self.model if "gemini" in self.model.lower() else "gemini-1.5-flash"
+                raw_response = await self._gemini_query(prompt, user_message, model=gemini_model)
+            elif resolved_provider == "openai":
+                raw_response = await self._openai_query(prompt, user_message)
+            elif resolved_provider == "nvidia":
+                raw_response = await self._nvidia_query(prompt, user_message)
+            elif resolved_provider == "ollama":
+                raw_response = await self._ollama_query(prompt, user_message)
+            else:
+                raise ValueError(f"Unknown LLM provider: {resolved_provider}")
+        except Exception as e:
+            logger.error(f"Provider {resolved_provider} failed: {e}")
+            # Try fallback if NVIDIA NIM is available and Gemini failed (or vice-versa)
+            if resolved_provider != "nvidia" and settings.nvidia_api_key:
+                logger.info("Attempting fallback to NVIDIA NIM...")
+                raw_response = await self._nvidia_query(prompt, user_message, model="meta/llama-3.1-70b-instruct")
+            elif resolved_provider != "gemini" and settings.gemini_api_key:
+                logger.info("Attempting fallback to Google Gemini...")
+                raw_response = await self._gemini_query(prompt, user_message, model="gemini-1.5-flash")
+            else:
+                raise e
 
         # Parse flow diagram from response
         flow = self._extract_flow(raw_response)
@@ -134,9 +186,10 @@ Also provide a human-readable summary of the impact."""
 
     # ─── Provider Implementations ────────────────────────────────────────
 
-    async def _gemini_query(self, system_prompt: str, user_message: str) -> str:
+    async def _gemini_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
         """Query Google Gemini API."""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:generateContent"
+        use_model = model or self.model
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{use_model}:generateContent"
 
         response = await self._client.post(
             url,
@@ -150,9 +203,12 @@ Also provide a human-readable summary of the impact."""
                 },
             },
         )
-        response.raise_for_status()
-        data = response.json()
+        if response.status_code != 200:
+            error_body = response.text
+            logger.error(f"Gemini API returned {response.status_code}: {error_body}")
+            raise RuntimeError(f"Gemini API error ({response.status_code}): {error_body}")
 
+        data = response.json()
         candidates = data.get("candidates", [])
         if not candidates:
             return "Unable to generate a response."
@@ -160,13 +216,13 @@ Also provide a human-readable summary of the impact."""
         parts = candidates[0].get("content", {}).get("parts", [])
         return parts[0].get("text", "") if parts else ""
 
-    async def _openai_query(self, system_prompt: str, user_message: str) -> str:
+    async def _openai_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
         """Query OpenAI API."""
         response = await self._client.post(
             "https://api.openai.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {settings.openai_api_key}"},
             json={
-                "model": self.model,
+                "model": model or self.model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
@@ -175,17 +231,21 @@ Also provide a human-readable summary of the impact."""
                 "temperature": 0.3,
             },
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            error_body = response.text
+            logger.error(f"OpenAI API returned {response.status_code}: {error_body}")
+            raise RuntimeError(f"OpenAI API error ({response.status_code}): {error_body}")
+
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
-    async def _nvidia_query(self, system_prompt: str, user_message: str) -> str:
+    async def _nvidia_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
         """Query Nvidia NIM (OpenAI compatible)."""
         response = await self._client.post(
             "https://integrate.api.nvidia.com/v1/chat/completions",
             headers={"Authorization": f"Bearer {settings.nvidia_api_key}"},
             json={
-                "model": self.model,
+                "model": model or self.model,
                 "messages": [
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message},
@@ -194,7 +254,11 @@ Also provide a human-readable summary of the impact."""
                 "temperature": 0.3,
             },
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            error_body = response.text
+            logger.error(f"NVIDIA NIM API returned {response.status_code}: {error_body}")
+            raise RuntimeError(f"NVIDIA NIM error ({response.status_code}): {error_body}")
+
         data = response.json()
         return data["choices"][0]["message"]["content"]
 
@@ -211,7 +275,11 @@ Also provide a human-readable summary of the impact."""
                 "stream": False,
             },
         )
-        response.raise_for_status()
+        if response.status_code != 200:
+            error_body = response.text
+            logger.error(f"Ollama API returned {response.status_code}: {error_body}")
+            raise RuntimeError(f"Ollama error ({response.status_code}): {error_body}")
+
         data = response.json()
         return data.get("message", {}).get("content", "")
 
@@ -232,10 +300,23 @@ Also provide a human-readable summary of the impact."""
             return None
 
         json_str = response[start + len(start_tag) : end].strip()
+        
+        # Clean up common LLM markdown artifacts inside the tags
+        if json_str.startswith("```json"):
+            json_str = json_str[7:]
+        elif json_str.startswith("```"):
+            json_str = json_str[3:]
+            
+        if json_str.endswith("```"):
+            json_str = json_str[:-3]
+            
+        json_str = json_str.strip()
+        
         try:
             return json.loads(json_str)
-        except json.JSONDecodeError:
-            logger.warning(f"Failed to parse {tag} JSON from LLM response")
+        except json.JSONDecodeError as e:
+            logger.warning(f"Failed to parse {tag} JSON from LLM response: {e}")
+            logger.debug(f"Raw string was: {json_str}")
             return None
 
     def _clean_answer(self, response: str) -> str:

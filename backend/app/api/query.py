@@ -69,4 +69,7 @@ async def query_repository(
             confidence=0.85,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        import traceback
+        import logging
+        logging.getLogger(__name__).error(f"Error querying LLM:\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")

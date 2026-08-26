@@ -39,8 +39,27 @@ async def get_db() -> AsyncSession:
 
 async def init_db() -> None:
     """Create all tables and install pgvector extension."""
-    async with engine.begin() as conn:
-        await conn.execute(
-            __import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS vector")
-        )
-        await conn.run_sync(Base.metadata.create_all)
+    import logging
+    import asyncio
+    logger = logging.getLogger(__name__)
+    
+    max_retries = 3
+    for attempt in range(1, max_retries + 1):
+        try:
+            logger.info(f"Connecting to database (attempt {attempt}/{max_retries})...")
+            async with engine.begin() as conn:
+                try:
+                    await conn.execute(
+                        __import__("sqlalchemy").text("CREATE EXTENSION IF NOT EXISTS vector")
+                    )
+                except Exception as ext_err:
+                    logger.warning(f"pgvector extension creation notice: {ext_err}")
+                await conn.run_sync(Base.metadata.create_all)
+            logger.info("Database initialized successfully.")
+            return
+        except Exception as e:
+            logger.error(f"Database connection attempt {attempt} failed: {e}")
+            if attempt < max_retries:
+                await asyncio.sleep(2)
+            else:
+                logger.error("Could not connect to database after retries. Check DATABASE_URL host and region.")

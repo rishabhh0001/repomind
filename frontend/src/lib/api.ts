@@ -28,8 +28,8 @@ export async function getGraph(repoId: number) {
   return res.json();
 }
 
-export async function getNodeDetail(symbolId: number) {
-  const res = await fetch(`${API_BASE}/graph/nodes/${symbolId}`);
+export async function getNodeDetail(symbolId: string | number) {
+  const res = await fetch(`${API_BASE}/graph/nodes/${encodeURIComponent(symbolId)}`);
   if (!res.ok) throw new Error("Failed to get node detail");
   return res.json();
 }
@@ -40,6 +40,17 @@ export async function queryRepo(repoId: number, question: string) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ repo_id: repoId, question }),
   });
-  if (!res.ok) throw new Error("Failed to query repo");
+  if (!res.ok) {
+    let message = `Server error (${res.status})`;
+    try {
+      const data = await res.json();
+      if (data && data.detail) {
+        message = data.detail;
+      }
+    } catch {
+      // fallback
+    }
+    throw new Error(message);
+  }
   return res.json();
 }

@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { importRepo } from "@/lib/api";
-import { ArrowRight, Loader2, Code2, Database, GitBranch, GitMerge, Command, Box, Maximize, Check } from "lucide-react";
+import { Loader2 } from "lucide-react";
+import { MaterialIcon } from "@/components/ui/material-icon";
 import { Input } from "@/components/ui/input";
 
 export default function Home() {
@@ -35,7 +36,9 @@ export default function Home() {
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 bg-black/50 backdrop-blur-md border-b border-white/5">
         <div className="flex items-center gap-2 font-medium tracking-tight">
-          <Box className="w-5 h-5 text-white" />
+          <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center border border-white/10">
+            <MaterialIcon name="deployed_code" size={18} className="text-white" />
+          </div>
           <span>RepoMind</span>
         </div>
         <div className="hidden md:flex items-center gap-8 text-sm text-zinc-400">
@@ -45,7 +48,10 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4">
           <button className="text-sm font-medium text-zinc-300 hover:text-white transition-colors">Log In</button>
-          <button className="text-sm font-medium bg-white text-black px-4 py-2 rounded-full hover:bg-zinc-200 transition-colors">
+          <button 
+            onClick={() => router.push('/dashboard')}
+            className="text-sm font-medium bg-white text-black px-4 py-2 rounded-full hover:bg-zinc-200 transition-colors"
+          >
             Deploy Now
           </button>
         </div>
@@ -57,8 +63,8 @@ export default function Home() {
         
         <div className="z-10 max-w-4xl space-y-8">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/5 text-xs text-zinc-300">
-            <span className="w-2 h-2 rounded-full bg-zinc-400 animate-pulse" />
-            RepoMind v1.0 is now available
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            RepoMind v1.0 is now live
           </div>
           
           <h1 className="text-5xl md:text-7xl font-semibold tracking-tighter leading-[1.1]">
@@ -71,8 +77,8 @@ export default function Home() {
 
           <div className="pt-8 max-w-lg mx-auto w-full">
             <form onSubmit={handleSubmit} className="relative flex items-center group">
-              <div className="absolute left-4 text-zinc-500">
-                <GitBranch className="w-5 h-5" />
+              <div className="absolute left-4 text-zinc-500 flex items-center">
+                <MaterialIcon name="fork_right" size={20} />
               </div>
               <Input 
                 id="url"
@@ -88,13 +94,20 @@ export default function Home() {
               <button 
                 type="submit" 
                 disabled={loading || !url.trim()}
-                className="absolute right-2 h-10 px-4 flex items-center justify-center bg-white text-black hover:bg-zinc-200 rounded-xl disabled:opacity-50 transition-colors font-medium text-sm"
+                className="absolute right-2 h-10 px-4 flex items-center justify-center bg-white text-black hover:bg-zinc-200 rounded-xl disabled:opacity-50 transition-colors font-medium text-sm gap-1"
               >
-                {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Analyze"}
+                {loading ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <>
+                    <span>Analyze</span>
+                    <MaterialIcon name="arrow_forward" size={16} />
+                  </>
+                )}
               </button>
             </form>
             <div className="h-6 mt-2 flex items-center justify-center">
-              {error && <p className="text-zinc-500 text-xs tracking-tight">{error}</p>}
+              {error && <p className="text-red-400 text-xs tracking-tight">{error}</p>}
             </div>
           </div>
         </div>
@@ -107,22 +120,25 @@ export default function Home() {
               <div className="w-3 h-3 rounded-full bg-zinc-800" />
               <div className="w-3 h-3 rounded-full bg-zinc-800" />
             </div>
-            <div className="text-xs text-zinc-500 font-mono flex items-center gap-2">
-              <Code2 className="w-4 h-4" /> repomind-workspace
+            <div className="text-xs text-zinc-500 font-mono flex items-center gap-1.5">
+              <MaterialIcon name="code" size={16} className="text-indigo-400" />
+              <span>repomind-workspace</span>
             </div>
             <div className="w-12" /> {/* Spacer */}
           </div>
           <div className="aspect-[16/9] bg-[linear-gradient(to_right,#ffffff05_1px,transparent_1px),linear-gradient(to_bottom,#ffffff05_1px,transparent_1px)] bg-[size:24px_24px] flex items-center justify-center">
             {/* Mock Graph Elements */}
             <div className="relative w-full h-full p-8 flex flex-col justify-center items-center">
-               <div className="w-48 p-4 border border-zinc-800 bg-zinc-950 rounded-lg shadow-lg text-xs font-mono text-zinc-300 absolute top-1/4 left-1/4">
-                 function parse_ast()
+               <div className="w-48 p-4 border border-zinc-800 bg-zinc-950 rounded-lg shadow-lg text-xs font-mono text-zinc-300 absolute top-1/4 left-1/4 flex items-center gap-2">
+                 <MaterialIcon name="code" size={16} className="text-indigo-400" />
+                 <span>function parse_ast()</span>
                </div>
                <svg className="absolute inset-0 w-full h-full pointer-events-none">
                  <path d="M 250 200 C 350 200, 450 300, 550 300" fill="none" stroke="#27272a" strokeWidth="2" />
                </svg>
-               <div className="w-48 p-4 border border-white/20 bg-black rounded-lg shadow-2xl text-xs font-mono text-white absolute top-1/3 left-1/2 -translate-x-1/2 ring-1 ring-white/10">
-                 class ASTParser
+               <div className="w-48 p-4 border border-white/20 bg-black rounded-lg shadow-2xl text-xs font-mono text-white absolute top-1/3 left-1/2 -translate-x-1/2 ring-1 ring-white/10 flex items-center gap-2">
+                 <MaterialIcon name="inventory_2" size={16} className="text-indigo-400" />
+                 <span>class ASTParser</span>
                </div>
             </div>
           </div>
@@ -134,12 +150,11 @@ export default function Home() {
         <div className="max-w-5xl mx-auto px-6 text-center">
           <p className="text-sm font-medium text-zinc-500 tracking-widest uppercase mb-8">Trusted by forward-thinking teams</p>
           <div className="flex flex-wrap justify-center items-center gap-12 md:gap-24 opacity-40 grayscale">
-            {/* Minimalist logos replaced with icons for mockup */}
-            <Command className="w-8 h-8 text-white" />
-            <Maximize className="w-8 h-8 text-white" />
-            <Database className="w-8 h-8 text-white" />
-            <GitMerge className="w-8 h-8 text-white" />
-            <Box className="w-8 h-8 text-white" />
+            <MaterialIcon name="terminal" size={32} className="text-white" />
+            <MaterialIcon name="fit_screen" size={32} className="text-white" />
+            <MaterialIcon name="database" size={32} className="text-white" />
+            <MaterialIcon name="alt_route" size={32} className="text-white" />
+            <MaterialIcon name="deployed_code" size={32} className="text-white" />
           </div>
         </div>
       </section>
@@ -161,11 +176,17 @@ export default function Home() {
             </div>
             <div className="relative z-10 mt-12 w-full aspect-[2/1] border border-zinc-800 rounded-xl bg-black overflow-hidden flex items-center justify-center p-6">
               <div className="flex gap-4 items-center">
-                <div className="w-32 h-16 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center text-xs font-mono text-zinc-500">Frontend</div>
-                <ArrowRight className="w-4 h-4 text-zinc-600" />
-                <div className="w-32 h-16 bg-white rounded-lg border border-white flex items-center justify-center text-xs font-mono text-black font-medium">Gateway</div>
-                <ArrowRight className="w-4 h-4 text-zinc-600" />
-                <div className="w-32 h-16 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center text-xs font-mono text-zinc-500">Database</div>
+                <div className="w-32 h-16 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center text-xs font-mono text-zinc-400 gap-1.5">
+                  <MaterialIcon name="web" size={16} /> Frontend
+                </div>
+                <MaterialIcon name="arrow_forward" size={16} className="text-zinc-600" />
+                <div className="w-32 h-16 bg-white rounded-lg border border-white flex items-center justify-center text-xs font-mono text-black font-medium gap-1.5">
+                  <MaterialIcon name="api" size={16} /> Gateway
+                </div>
+                <MaterialIcon name="arrow_forward" size={16} className="text-zinc-600" />
+                <div className="w-32 h-16 bg-zinc-900 rounded-lg border border-zinc-800 flex items-center justify-center text-xs font-mono text-zinc-400 gap-1.5">
+                  <MaterialIcon name="database" size={16} /> Database
+                </div>
               </div>
             </div>
           </div>
@@ -177,10 +198,10 @@ export default function Home() {
             </div>
             <div className="mt-8 space-y-3 relative z-10">
               <div className="p-4 border border-zinc-800 rounded-lg bg-black text-sm flex items-center gap-3">
-                <Check className="w-4 h-4 text-white" /> Safe to modify
+                <MaterialIcon name="check_circle" size={18} className="text-emerald-400" /> Safe to modify
               </div>
               <div className="p-4 border border-zinc-700 bg-zinc-900 rounded-lg text-sm flex items-center gap-3">
-                <span className="w-2 h-2 rounded-full bg-white animate-pulse" /> Evaluating impacts...
+                <MaterialIcon name="sync" size={18} className="animate-spin text-indigo-400" /> Evaluating impacts...
               </div>
             </div>
           </div>
@@ -191,7 +212,9 @@ export default function Home() {
               <p className="text-zinc-400 font-light leading-relaxed">Instantly trace any component back to its exact creation point and read the author's original intent.</p>
             </div>
             <div className="mt-8 p-4 border border-zinc-800 bg-black rounded-lg text-xs font-mono text-zinc-400 relative z-10">
-              <div className="text-zinc-600 mb-2">commit 8a4b2c1</div>
+              <div className="text-zinc-600 mb-2 flex items-center gap-1">
+                <MaterialIcon name="commit" size={14} className="text-indigo-400" /> commit 8a4b2c1
+              </div>
               <div className="text-white">feat: implement abstract factory</div>
               <div className="mt-2 text-zinc-500">Author: rishabhh0001</div>
             </div>
@@ -222,8 +245,12 @@ export default function Home() {
       <section className="py-32 px-6 border-t border-zinc-900 text-center flex flex-col items-center">
         <h2 className="text-4xl md:text-6xl font-semibold tracking-tighter mb-6">Ready to redefine your workflow?</h2>
         <p className="text-zinc-400 text-lg font-light mb-10 max-w-xl mx-auto">Join thousands of engineers who are mapping their codebases and eliminating technical debt faster than ever.</p>
-        <button className="h-14 px-8 bg-white text-black hover:bg-zinc-200 rounded-full font-medium transition-colors flex items-center gap-2 text-base">
-          Start Mapping For Free <ArrowRight className="w-4 h-4" />
+        <button 
+          onClick={() => router.push('/dashboard')}
+          className="h-14 px-8 bg-white text-black hover:bg-zinc-200 rounded-full font-medium transition-colors flex items-center gap-2 text-base"
+        >
+          <span>Start Mapping For Free</span>
+          <MaterialIcon name="arrow_forward" size={18} />
         </button>
       </section>
 
@@ -268,7 +295,9 @@ export default function Home() {
         <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between pt-8 border-t border-zinc-900 text-xs text-zinc-600">
           <div>&copy; 2026 RepoMind Inc. All rights reserved.</div>
           <div className="flex gap-4 mt-4 md:mt-0">
-            <a href="#" className="hover:text-white transition-colors"><GitBranch className="w-4 h-4" /></a>
+            <a href="#" className="hover:text-white transition-colors">
+              <MaterialIcon name="fork_right" size={16} />
+            </a>
           </div>
         </div>
       </footer>

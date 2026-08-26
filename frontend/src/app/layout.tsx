@@ -17,16 +17,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={cn("dark", "font-sans", inter.variable)}>
-      <body className={cn("min-h-screen bg-background font-sans antialiased text-foreground flex flex-col", inter.variable, jetbrainsMono.variable)}>
-        <nav className="flex items-center justify-between px-6 h-14 border-b border-white/5 bg-[#0c0c0c] shrink-0">
+    <html lang="en" className={cn("dark h-full overflow-hidden", "font-sans", inter.variable)}>
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+        />
+      </head>
+      <body className={cn("h-screen w-screen overflow-hidden bg-background font-sans antialiased text-foreground flex flex-col", inter.variable, jetbrainsMono.variable)}>
+        <nav className="flex items-center justify-between px-6 h-14 border-b border-white/5 bg-[#0c0c0c] shrink-0 z-30">
           <div className="flex items-center gap-6">
             <a href="/" className="flex items-center gap-2 font-medium tracking-tight hover:text-white transition-colors">
               <div className="w-5 h-5 rounded bg-white text-black flex items-center justify-center font-bold text-xs">R</div>
               <span>RepoMind</span>
             </a>
             <div className="hidden md:flex items-center gap-4 text-sm text-zinc-400">
-              <a href="/" className="hover:text-white transition-colors">Dashboard</a>
+              <a href="/dashboard" className="hover:text-white transition-colors">Dashboard</a>
               <a href="#" className="hover:text-white transition-colors">Settings</a>
               <a href="#" className="hover:text-white transition-colors">Docs</a>
             </div>
@@ -35,7 +41,7 @@ export default function RootLayout({
             <div className="w-6 h-6 rounded-full bg-zinc-800 border border-zinc-700"></div>
           </div>
         </nav>
-        <main className="flex-1 relative flex flex-col overflow-hidden">
+        <main className="flex-1 min-h-0 relative flex flex-col overflow-hidden">
           {children}
         </main>
       </body>

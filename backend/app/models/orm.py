@@ -133,6 +133,9 @@ class Symbol(Base):
     incoming_edges = relationship(
         "Edge", foreign_keys="Edge.target_id", back_populates="target", cascade="all, delete"
     )
+    symbol_commits = relationship(
+        "SymbolCommit", back_populates="symbol", cascade="all, delete"
+    )
 
     __table_args__ = (
         Index("idx_symbols_repo_id", "repo_id"),
@@ -226,7 +229,7 @@ class SymbolCommit(Base):
     lines_changed = Column(Integer, default=0)
 
     # Relationships
-    symbol = relationship("Symbol")
+    symbol = relationship("Symbol", back_populates="symbol_commits")
     commit = relationship("Commit")
 
     __table_args__ = (
