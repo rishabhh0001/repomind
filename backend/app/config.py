@@ -42,7 +42,7 @@ class Settings(BaseSettings):
     repos_dir: str = "./repos"
 
     # CORS
-    allowed_origins: str = "http://localhost:3000"
+    allowed_origins: str = "http://localhost:3000,https://repomind.rishabhj.in"
 
     # Rate limiting
     rate_limit_per_minute: int = 60
