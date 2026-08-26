@@ -57,36 +57,29 @@ class LLMService:
         self._client = httpx.AsyncClient(timeout=120.0)
 
     def _resolve_provider(self) -> str:
-        """Resolve LLM provider based on settings, model name, and available API keys."""
-        # 1. Primary Priority: NVIDIA NIM
+        """Resolve LLM provider based on settings, model name, and available API keys.
+        
+        Priority: NVIDIA NIM > explicit provider > Gemini fallback.
+        """
+        # 1. Try NVIDIA NIM first if key is available
         if settings.nvidia_api_key:
             return "nvidia"
 
-        if self.provider == "nvidia":
-            return "nvidia"
-
-        # 2. Auto-detect by model name
-        if "/" in self.model or self.model.startswith("meta/") or self.model.startswith("nvidia/") or self.model.startswith("mistralai/"):
-            if settings.nvidia_api_key:
-                return "nvidia"
-            elif settings.openai_api_key:
-                return "openai"
-
-        # 3. Explicit provider
-        if self.provider == "openai" and settings.openai_api_key:
-            return "openai"
+        # 2. Explicit provider settings
         if self.provider == "gemini" and settings.gemini_api_key:
             return "gemini"
+        if self.provider == "openai" and settings.openai_api_key:
+            return "openai"
         if self.provider == "ollama":
             return "ollama"
 
-        # 4. Fallbacks
-        if settings.openai_api_key:
-            return "openai"
+        # 3. Fallback: whichever key is available
         if settings.gemini_api_key:
             return "gemini"
+        if settings.openai_api_key:
+            return "openai"
 
-        return "nvidia"
+        return self.provider
 
     async def query(
         self,
@@ -122,17 +115,27 @@ class LLMService:
             elif resolved_provider == "openai":
                 raw_response = await self._openai_query(prompt, user_message)
             elif resolved_provider == "gemini":
-                gemini_model = self.model if "gemini" in self.model.lower() else "gemini-2.0-flash"
-                raw_response = await self._gemini_query(prompt, user_message, model=gemini_model)
+                raw_response = await self._gemini_query(prompt, user_message, model="gemini-3.6-flash")
             elif resolved_provider == "ollama":
                 raw_response = await self._ollama_query(prompt, user_message)
             else:
-                nvidia_model = self.model if "/" in self.model else "meta/llama-3.1-70b-instruct"
-                raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
+                # Default: try Gemini if key exists, otherwise NVIDIA
+                if settings.gemini_api_key:
+                    raw_response = await self._gemini_query(prompt, user_message, model="gemini-3.6-flash")
+                else:
+                    nvidia_model = self.model if "/" in self.model else "meta/llama-3.1-70b-instruct"
+                    raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
         except Exception as e:
             logger.error(f"Provider {resolved_provider} failed: {e}")
-            # Try fallback to NVIDIA NIM if not already used
-            if resolved_provider != "nvidia" and settings.nvidia_api_key:
+            # Fallback chain: try Gemini if primary failed, then NVIDIA
+            if resolved_provider != "gemini" and settings.gemini_api_key:
+                logger.info("Attempting fallback to Google Gemini 3.6 Flash...")
+                try:
+                    raw_response = await self._gemini_query(prompt, user_message, model="gemini-3.6-flash")
+                except Exception as e2:
+                    logger.error(f"Gemini fallback also failed: {e2}")
+                    raise e
+            elif resolved_provider != "nvidia" and settings.nvidia_api_key:
                 logger.info("Attempting fallback to NVIDIA NIM...")
                 raw_response = await self._nvidia_query(prompt, user_message, model="meta/llama-3.1-70b-instruct")
             else:
