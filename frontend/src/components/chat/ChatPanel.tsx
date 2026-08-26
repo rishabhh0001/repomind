@@ -17,13 +17,32 @@ interface Message {
 }
 
 export default function ChatPanel({ repoId }: { repoId: number }) {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "1",
-      role: "assistant",
-      content: "Hello! I'm RepoMind AI. Ask me anything about the architecture, flows, or specific functions in this repository."
+  const STORAGE_KEY = `repomind_chat_${repoId}`;
+
+  const [messages, setMessages] = useState<Message[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          return JSON.parse(saved);
+        } catch (e) {
+          console.error("Failed to parse chat history");
+        }
+      }
     }
-  ]);
+    return [
+      {
+        id: "1",
+        role: "assistant",
+        content: "Hello! I'm RepoMind AI. Ask me anything about the architecture, flows, or specific functions in this repository."
+      }
+    ];
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+  }, [messages, STORAGE_KEY]);
+
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
