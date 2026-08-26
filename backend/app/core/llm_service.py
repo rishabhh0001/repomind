@@ -58,15 +58,12 @@ class LLMService:
 
     def _resolve_provider(self) -> str:
         """Resolve LLM provider based on settings, model name, and available API keys."""
-        # 1. If explicit provider is set and configured with key
-        if self.provider == "nvidia" and settings.nvidia_api_key:
+        # 1. Primary Priority: NVIDIA NIM
+        if settings.nvidia_api_key:
             return "nvidia"
-        if self.provider == "gemini" and settings.gemini_api_key and "gemini" in self.model.lower():
-            return "gemini"
-        if self.provider == "openai" and settings.openai_api_key:
-            return "openai"
-        if self.provider == "ollama":
-            return "ollama"
+
+        if self.provider == "nvidia":
+            return "nvidia"
 
         # 2. Auto-detect by model name
         if "/" in self.model or self.model.startswith("meta/") or self.model.startswith("nvidia/") or self.model.startswith("mistralai/"):
@@ -75,20 +72,21 @@ class LLMService:
             elif settings.openai_api_key:
                 return "openai"
 
-        if "gemini" in self.model.lower() and settings.gemini_api_key:
+        # 3. Explicit provider
+        if self.provider == "openai" and settings.openai_api_key:
+            return "openai"
+        if self.provider == "gemini" and settings.gemini_api_key:
             return "gemini"
+        if self.provider == "ollama":
+            return "ollama"
 
-        # 3. Fallback based on available keys
-        if settings.nvidia_api_key and "/" in self.model:
-            return "nvidia"
-        if settings.gemini_api_key:
-            return "gemini"
+        # 4. Fallbacks
         if settings.openai_api_key:
             return "openai"
-        if settings.nvidia_api_key:
-            return "nvidia"
+        if settings.gemini_api_key:
+            return "gemini"
 
-        return self.provider
+        return "nvidia"
 
     async def query(
         self,
@@ -118,27 +116,25 @@ class LLMService:
 
         raw_response = ""
         try:
-            if resolved_provider == "gemini":
-                # Ensure model is valid for Gemini if fallback needed
-                gemini_model = self.model if "gemini" in self.model.lower() else "gemini-1.5-flash"
-                raw_response = await self._gemini_query(prompt, user_message, model=gemini_model)
+            if resolved_provider == "nvidia":
+                nvidia_model = self.model if "/" in self.model else "meta/llama-3.1-70b-instruct"
+                raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
             elif resolved_provider == "openai":
                 raw_response = await self._openai_query(prompt, user_message)
-            elif resolved_provider == "nvidia":
-                raw_response = await self._nvidia_query(prompt, user_message)
+            elif resolved_provider == "gemini":
+                gemini_model = self.model if "gemini" in self.model.lower() else "gemini-2.0-flash"
+                raw_response = await self._gemini_query(prompt, user_message, model=gemini_model)
             elif resolved_provider == "ollama":
                 raw_response = await self._ollama_query(prompt, user_message)
             else:
-                raise ValueError(f"Unknown LLM provider: {resolved_provider}")
+                nvidia_model = self.model if "/" in self.model else "meta/llama-3.1-70b-instruct"
+                raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
         except Exception as e:
             logger.error(f"Provider {resolved_provider} failed: {e}")
-            # Try fallback if NVIDIA NIM is available and Gemini failed (or vice-versa)
+            # Try fallback to NVIDIA NIM if not already used
             if resolved_provider != "nvidia" and settings.nvidia_api_key:
                 logger.info("Attempting fallback to NVIDIA NIM...")
                 raw_response = await self._nvidia_query(prompt, user_message, model="meta/llama-3.1-70b-instruct")
-            elif resolved_provider != "gemini" and settings.gemini_api_key:
-                logger.info("Attempting fallback to Google Gemini...")
-                raw_response = await self._gemini_query(prompt, user_message, model="gemini-1.5-flash")
             else:
                 raise e
 

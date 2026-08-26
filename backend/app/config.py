@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
 
     # LLM Provider
-    llm_provider: Literal["gemini", "openai", "ollama", "nvidia"] = "gemini"
+    llm_provider: Literal["gemini", "openai", "ollama", "nvidia"] = "nvidia"
     gemini_api_key: str = ""
     openai_api_key: str = ""
     nvidia_api_key: str = ""
@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     embedding_dimension: int = 768
 
     # LLM Model
-    llm_model: str = "gemini-2.0-flash"
+    llm_model: str = "meta/llama-3.1-70b-instruct"
 
     # Repository storage
     repos_dir: str = "./repos"

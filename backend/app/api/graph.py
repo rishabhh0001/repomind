@@ -82,9 +82,8 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     )
 
 
-@router.get("/nodes/{symbol_id_or_name:path}", response_model=SymbolDetail)
-async def get_node_detail(symbol_id_or_name: str, db: AsyncSession = Depends(get_db)) -> SymbolDetail:
-    """Get detailed information about a single code symbol by ID or qualified_name."""
+async def _fetch_symbol_detail(query: str, db: AsyncSession) -> SymbolDetail:
+    """Fetch symbol detail with robust fallback strategies."""
     stmt = (
         select(Symbol)
         .options(
@@ -93,15 +92,40 @@ async def get_node_detail(symbol_id_or_name: str, db: AsyncSession = Depends(get
             selectinload(Symbol.symbol_commits).selectinload(SymbolCommit.commit),
         )
     )
-    if symbol_id_or_name.isdigit():
-        stmt = stmt.where(Symbol.id == int(symbol_id_or_name))
-    else:
-        stmt = stmt.where(Symbol.qualified_name == symbol_id_or_name)
 
-    result = await db.execute(stmt)
-    symbol = result.scalar_one_or_none()
+    clean_query = query.strip()
+    symbol = None
+
+    # 1. By integer primary key
+    if clean_query.isdigit():
+        result = await db.execute(stmt.where(Symbol.id == int(clean_query)))
+        symbol = result.scalar_one_or_none()
+
+    # 2. By exact qualified_name
     if not symbol:
-        raise HTTPException(status_code=404, detail="Symbol not found")
+        result = await db.execute(stmt.where(Symbol.qualified_name == clean_query))
+        symbol = result.scalar_one_or_none()
+
+    # 3. By cleaned qualified_name (strip whitespace and common trailing artifacts)
+    if not symbol:
+        sanitized = clean_query.split("(")[0].strip()
+        result = await db.execute(stmt.where(Symbol.qualified_name == sanitized))
+        symbol = result.scalar_one_or_none()
+
+    # 4. By exact symbol name
+    if not symbol:
+        result = await db.execute(stmt.where(Symbol.name == clean_query))
+        symbol = result.scalars().first()
+
+    # 5. By suffix or partial match
+    if not symbol and "." in clean_query:
+        last_part = clean_query.split(".")[-1].split("(")[0].strip()
+        if last_part:
+            result = await db.execute(stmt.where(Symbol.name == last_part))
+            symbol = result.scalars().first()
+
+    if not symbol:
+        raise HTTPException(status_code=404, detail=f"Symbol '{clean_query}' not found")
 
     dependencies = [
         {
@@ -157,3 +181,20 @@ async def get_node_detail(symbol_id_or_name: str, db: AsyncSession = Depends(get
         dependents=dependents,
         commits=commits,
     )
+
+
+@router.get("/node-detail", response_model=SymbolDetail)
+async def get_node_detail_by_query(
+    id_or_name: str, db: AsyncSession = Depends(get_db)
+) -> SymbolDetail:
+    """Get detailed information about a single code symbol using query parameters."""
+    return await _fetch_symbol_detail(id_or_name, db)
+
+
+@router.get("/nodes/{symbol_id_or_name:path}", response_model=SymbolDetail)
+async def get_node_detail(
+    symbol_id_or_name: str, db: AsyncSession = Depends(get_db)
+) -> SymbolDetail:
+    """Get detailed information about a single code symbol by path parameter."""
+    return await _fetch_symbol_detail(symbol_id_or_name, db)
+

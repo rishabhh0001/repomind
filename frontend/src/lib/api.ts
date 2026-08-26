@@ -29,9 +29,20 @@ export async function getGraph(repoId: number) {
 }
 
 export async function getNodeDetail(symbolId: string | number) {
-  const res = await fetch(`${API_BASE}/graph/nodes/${encodeURIComponent(symbolId)}`);
-  if (!res.ok) throw new Error("Failed to get node detail");
-  return res.json();
+  // Use query parameter to safely handle any special characters, newlines, colons, or slashes
+  const queryUrl = `${API_BASE}/graph/node-detail?id_or_name=${encodeURIComponent(symbolId)}`;
+  const res = await fetch(queryUrl);
+  if (res.ok) {
+    return res.json();
+  }
+  
+  // Fallback to path endpoint
+  const pathUrl = `${API_BASE}/graph/nodes/${encodeURIComponent(symbolId)}`;
+  const fallbackRes = await fetch(pathUrl);
+  if (!fallbackRes.ok) {
+    throw new Error("Failed to get node detail");
+  }
+  return fallbackRes.json();
 }
 
 export async function queryRepo(repoId: number, question: string) {

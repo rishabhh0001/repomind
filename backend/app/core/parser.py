@@ -611,9 +611,9 @@ class CodeParser:
             func_node = node.child_by_field_name("function")
             if func_node:
                 call_text = self._node_text(func_node, source)
-                # Clean up the call text
-                call_text = call_text.strip()
-                if call_text and not call_text.startswith("("):
+                # Clean up and normalize the call text (strip newlines, extra spaces)
+                call_text = "".join(call_text.split())
+                if call_text and not call_text.startswith("(") and len(call_text) < 120:
                     calls.append(call_text)
         for child in node.children:
             self._walk_calls(child, source, calls)
