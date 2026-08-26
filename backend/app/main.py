@@ -30,23 +30,38 @@ app = FastAPI(
 )
 
 # CORS middleware
-origins = [
-    origin.strip() for origin in settings.allowed_origins.split(",")
-]
+origins = [origin.strip() for origin in settings.allowed_origins.split(",") if origin.strip()]
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+if "*" in origins or not origins:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
 # Include routers
 app.include_router(api_router, prefix="/api/v1")
 
 
+@app.get("/", tags=["Health"])
+@app.head("/", tags=["Health"])
+async def root():
+    """Root health check for cloud providers."""
+    return {"status": "online", "app": settings.app_name, "version": "0.1.0"}
+
+
 @app.get("/health", tags=["Health"])
+@app.head("/health", tags=["Health"])
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
