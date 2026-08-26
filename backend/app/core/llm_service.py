@@ -4,6 +4,7 @@ Supports Gemini, OpenAI, and Ollama. Handles prompt engineering
 for code architecture questions, flow generation, and temporal analysis.
 """
 
+import asyncio
 import json
 import logging
 from typing import Any
@@ -186,34 +187,43 @@ Also provide a human-readable summary of the impact."""
     # ─── Provider Implementations ────────────────────────────────────────
 
     async def _gemini_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
-        """Query Google Gemini API."""
+        """Query Google Gemini API with retries for transient errors."""
         use_model = model or self.model
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{use_model}:generateContent"
 
-        response = await self._client.post(
-            url,
-            params={"key": settings.gemini_api_key},
-            json={
-                "system_instruction": {"parts": [{"text": system_prompt}]},
-                "contents": [{"parts": [{"text": user_message}]}],
-                "generationConfig": {
-                    "maxOutputTokens": 4096,
-                    "temperature": 0.3,
+        max_retries = 3
+        for attempt in range(max_retries):
+            response = await self._client.post(
+                url,
+                params={"key": settings.gemini_api_key},
+                json={
+                    "system_instruction": {"parts": [{"text": system_prompt}]},
+                    "contents": [{"parts": [{"text": user_message}]}],
+                    "generationConfig": {
+                        "maxOutputTokens": 4096,
+                        "temperature": 0.3,
+                    },
                 },
-            },
-        )
-        if response.status_code != 200:
+            )
+            if response.status_code == 200:
+                data = response.json()
+                candidates = data.get("candidates", [])
+                if not candidates:
+                    return "Unable to generate a response."
+        
+                parts = candidates[0].get("content", {}).get("parts", [])
+                return parts[0].get("text", "") if parts else ""
+                
             error_body = response.text
+            # Retry on rate limit (429) or server errors (500, 503)
+            if response.status_code in (429, 500, 503) and attempt < max_retries - 1:
+                delay = 2 ** attempt
+                logger.warning(f"Gemini API returned {response.status_code}. Retrying in {delay}s... (Attempt {attempt+1}/{max_retries})")
+                await asyncio.sleep(delay)
+                continue
+                
             logger.error(f"Gemini API returned {response.status_code}: {error_body}")
             raise RuntimeError(f"Gemini API error ({response.status_code}): {error_body}")
-
-        data = response.json()
-        candidates = data.get("candidates", [])
-        if not candidates:
-            return "Unable to generate a response."
-
-        parts = candidates[0].get("content", {}).get("parts", [])
-        return parts[0].get("text", "") if parts else ""
 
     async def _openai_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
         """Query OpenAI API."""
@@ -239,31 +249,41 @@ Also provide a human-readable summary of the impact."""
         return data["choices"][0]["message"]["content"]
 
     async def _nvidia_query(self, system_prompt: str, user_message: str, model: str | None = None) -> str:
-        """Query Nvidia NIM (OpenAI compatible). Supports reasoning models like Nemotron Ultra."""
+        """Query Nvidia NIM (OpenAI compatible). Supports reasoning models like Nemotron Ultra with retries."""
         use_model = model or self.model
-        response = await self._client.post(
-            "https://integrate.api.nvidia.com/v1/chat/completions",
-            headers={"Authorization": f"Bearer {settings.nvidia_api_key}"},
-            json={
-                "model": use_model,
-                "messages": [
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_message},
-                ],
-                "max_tokens": 16384,
-                "temperature": 0.3,
-            },
-        )
-        if response.status_code != 200:
+        
+        max_retries = 3
+        for attempt in range(max_retries):
+            response = await self._client.post(
+                "https://integrate.api.nvidia.com/v1/chat/completions",
+                headers={"Authorization": f"Bearer {settings.nvidia_api_key}"},
+                json={
+                    "model": use_model,
+                    "messages": [
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_message},
+                    ],
+                    "max_tokens": 16384,
+                    "temperature": 0.3,
+                },
+            )
+            
+            if response.status_code == 200:
+                data = response.json()
+                message = data["choices"][0]["message"]
+                # Nemotron Ultra returns reasoning_content separately from content
+                content = message.get("content", "") or ""
+                return content
+                
             error_body = response.text
+            if response.status_code in (429, 500, 503) and attempt < max_retries - 1:
+                delay = 2 ** attempt
+                logger.warning(f"NVIDIA NIM API returned {response.status_code}. Retrying in {delay}s... (Attempt {attempt+1}/{max_retries})")
+                await asyncio.sleep(delay)
+                continue
+                
             logger.error(f"NVIDIA NIM API returned {response.status_code}: {error_body}")
             raise RuntimeError(f"NVIDIA NIM error ({response.status_code}): {error_body}")
-
-        data = response.json()
-        message = data["choices"][0]["message"]
-        # Nemotron Ultra returns reasoning_content separately from content
-        content = message.get("content", "") or ""
-        return content
 
     async def _ollama_query(self, system_prompt: str, user_message: str) -> str:
         """Query local Ollama."""

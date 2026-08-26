@@ -19,69 +19,6 @@ from app.models.schemas import (
 router = APIRouter()
 
 
-@router.get("/{repo_id}", response_model=GraphResponse)
-async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphResponse:
-    """Get the full code graph for a repository."""
-    # Verify repo
-    repo_result = await db.execute(
-        select(Repository).where(Repository.id == repo_id)
-    )
-    if not repo_result.scalar_one_or_none():
-        raise HTTPException(status_code=404, detail="Repository not found")
-
-    # Fetch symbols
-    symbols_result = await db.execute(
-        select(Symbol).where(Symbol.repo_id == repo_id)
-    )
-    symbols = symbols_result.scalars().all()
-
-    # Fetch edges
-    edges_result = await db.execute(
-        select(Edge).where(Edge.repo_id == repo_id).options(
-            selectinload(Edge.source),
-            selectinload(Edge.target)
-        )
-    )
-    edges = edges_result.scalars().all()
-
-    nodes = [
-        GraphNode(
-            id=s.qualified_name,
-            label=s.name,
-            symbol_type=s.symbol_type.value,
-            file_path=s.file_path,
-            line_start=s.line_start,
-            line_end=s.line_end,
-            language=s.language,
-            docstring=s.docstring,
-            parent_id=s.parent.qualified_name if s.parent else None,
-        )
-        for s in symbols
-    ]
-
-    graph_edges = [
-        GraphEdge(
-            id=str(e.id),
-            source=e.source.qualified_name,
-            target=e.target.qualified_name,
-            edge_type=e.edge_type.value,
-            weight=e.weight,
-        )
-        for e in edges
-        if e.source and e.target
-    ]
-
-    return GraphResponse(
-        repo_id=repo_id,
-        nodes=nodes,
-        edges=graph_edges,
-        stats={
-            "nodes": len(nodes),
-            "edges": len(graph_edges),
-        },
-    )
-
-
 async def _fetch_symbol_detail(query: str, db: AsyncSession) -> SymbolDetail:
     """Fetch symbol detail with robust fallback strategies."""
     stmt = (
@@ -183,6 +120,9 @@ async def _fetch_symbol_detail(query: str, db: AsyncSession) -> SymbolDetail:
     )
 
 
+# NOTE: Specific routes MUST come before /{repo_id} to prevent FastAPI
+# from matching "node-detail" or "nodes" as an integer repo_id (→ 422).
+
 @router.get("/node-detail", response_model=SymbolDetail)
 async def get_node_detail_by_query(
     id_or_name: str, db: AsyncSession = Depends(get_db)
@@ -197,4 +137,67 @@ async def get_node_detail(
 ) -> SymbolDetail:
     """Get detailed information about a single code symbol by path parameter."""
     return await _fetch_symbol_detail(symbol_id_or_name, db)
+
+
+@router.get("/{repo_id}", response_model=GraphResponse)
+async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphResponse:
+    """Get the full code graph for a repository."""
+    # Verify repo
+    repo_result = await db.execute(
+        select(Repository).where(Repository.id == repo_id)
+    )
+    if not repo_result.scalar_one_or_none():
+        raise HTTPException(status_code=404, detail="Repository not found")
+
+    # Fetch symbols
+    symbols_result = await db.execute(
+        select(Symbol).where(Symbol.repo_id == repo_id)
+    )
+    symbols = symbols_result.scalars().all()
+
+    # Fetch edges
+    edges_result = await db.execute(
+        select(Edge).where(Edge.repo_id == repo_id).options(
+            selectinload(Edge.source),
+            selectinload(Edge.target)
+        )
+    )
+    edges = edges_result.scalars().all()
+
+    nodes = [
+        GraphNode(
+            id=s.qualified_name,
+            label=s.name,
+            symbol_type=s.symbol_type.value,
+            file_path=s.file_path,
+            line_start=s.line_start,
+            line_end=s.line_end,
+            language=s.language,
+            docstring=s.docstring,
+            parent_id=s.parent.qualified_name if s.parent else None,
+        )
+        for s in symbols
+    ]
+
+    graph_edges = [
+        GraphEdge(
+            id=str(e.id),
+            source=e.source.qualified_name,
+            target=e.target.qualified_name,
+            edge_type=e.edge_type.value,
+            weight=e.weight,
+        )
+        for e in edges
+        if e.source and e.target
+    ]
+
+    return GraphResponse(
+        repo_id=repo_id,
+        nodes=nodes,
+        edges=graph_edges,
+        stats={
+            "nodes": len(nodes),
+            "edges": len(graph_edges),
+        },
+    )
 

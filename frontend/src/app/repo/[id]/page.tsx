@@ -78,7 +78,7 @@ export default function RepoWorkspace() {
 
       <div className="flex-1 min-h-0 flex flex-col md:flex-row overflow-hidden relative">
         {/* Left sidebar: Tabbed (Fixed sidebar height, only content scrolls) */}
-        <div className="w-full md:w-[420px] h-[45vh] md:h-full shrink-0 border-b md:border-b-0 md:border-r border-white/5 bg-[#111111] flex flex-col z-10 overflow-hidden">
+        <div className="w-full md:w-[420px] h-[45vh] md:h-full shrink-0 border-b md:border-b-0 md:border-r border-white/5 bg-[#111111] flex flex-col z-10" style={{ overflow: 'hidden' }}>
           <div className="flex items-center p-2 border-b border-white/5 gap-1 shrink-0 bg-[#111111]">
             <button
               onClick={() => setActiveTab("chat")}
@@ -97,7 +97,7 @@ export default function RepoWorkspace() {
               <MaterialIcon name="analytics" size={16} /> <span>Analytics</span>
             </button>
           </div>
-          <div className="flex-1 min-h-0 overflow-hidden relative flex flex-col">
+          <div className="flex-1 overflow-hidden" style={{ minHeight: 0 }}>
             {activeTab === "chat" ? <ChatPanel repoId={repoId} /> : <OverviewPanel repo={repo} />}
           </div>
         </div>
