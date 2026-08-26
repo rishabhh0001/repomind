@@ -111,7 +111,7 @@ class LLMService:
         raw_response = ""
         try:
             if resolved_provider == "nvidia":
-                nvidia_model = self.model if "/" in self.model else "nvidia/nemotron-3-ultra-550b-a55b"
+                nvidia_model = self.model if "/" in self.model else "meta/llama-3_3-70b-instruct"
                 raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
             elif resolved_provider == "openai":
                 raw_response = await self._openai_query(prompt, user_message)
@@ -124,7 +124,7 @@ class LLMService:
                 if settings.gemini_api_key:
                     raw_response = await self._gemini_query(prompt, user_message, model="gemini-3.6-flash")
                 else:
-                    nvidia_model = self.model if "/" in self.model else "meta/llama-3.1-70b-instruct"
+                    nvidia_model = self.model if "/" in self.model else "meta/llama-3_3-70b-instruct"
                     raw_response = await self._nvidia_query(prompt, user_message, model=nvidia_model)
         except Exception as e:
             logger.error(f"Provider {resolved_provider} failed: {e}")
@@ -138,7 +138,7 @@ class LLMService:
                     raise e
             elif resolved_provider != "nvidia" and settings.nvidia_api_key:
                 logger.info("Attempting fallback to NVIDIA NIM...")
-                raw_response = await self._nvidia_query(prompt, user_message, model="meta/llama-3.1-70b-instruct")
+                raw_response = await self._nvidia_query(prompt, user_message, model="meta/llama-3_3-70b-instruct")
             else:
                 raise e
 
