@@ -26,29 +26,73 @@ async def query_repository(
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
 
-    # In a full implementation, this would:
-    # 1. Embed the query
-    # 2. Vector search the embeddings table for relevant symbols
-    # 3. Retrieve graph neighborhood for those symbols
-    # 4. Construct context string
-    
-    # For MVP, we'll construct a simplified context with top symbols
-    # (Just fetching some random symbols for now to simulate RAG context)
-    symbols_result = await db.execute(
-        select(Symbol).where(Symbol.repo_id == request.repo_id).limit(50)
-    )
-    symbols = symbols_result.scalars().all()
-    
-    context_parts = []
-    for s in symbols:
-        context_parts.append(f"Symbol: {s.qualified_name} ({s.symbol_type})")
-        if s.docstring:
-            context_parts.append(f"Doc: {s.docstring}")
-        if s.signature:
-            context_parts.append(f"Sig: {s.signature}")
-        context_parts.append("")
+    from app.core.embeddings import EmbeddingService
+    from app.models.orm import Embedding
+    from sqlalchemy.orm import selectinload
+
+    embedding_service = EmbeddingService()
+    try:
+        # 1. Embed the query
+        question_embedding = await embedding_service.generate(request.question)
         
-    context_str = "\n".join(context_parts)
+        # 2. Vector search the embeddings table for relevant symbols
+        # Using cosine_distance (<=>) with pgvector to find top 10
+        embeddings_result = await db.execute(
+            select(Embedding)
+            .join(Symbol)
+            .where(Symbol.repo_id == request.repo_id)
+            .order_by(Embedding.embedding.cosine_distance(question_embedding))
+            .limit(10)
+        )
+        top_embeddings = embeddings_result.scalars().all()
+
+        if not top_embeddings:
+            context_str = "No relevant context found in the codebase."
+        else:
+            # 3. Retrieve graph neighborhood for those symbols
+            symbol_ids = [emb.symbol_id for emb in top_embeddings]
+            symbols_result = await db.execute(
+                select(Symbol)
+                .options(
+                    selectinload(Symbol.outgoing_edges).selectinload(Edge.target),
+                    selectinload(Symbol.incoming_edges).selectinload(Edge.source)
+                )
+                .where(Symbol.id.in_(symbol_ids))
+            )
+            symbols_unsorted = symbols_result.scalars().all()
+
+            # Re-sort based on the original similarity order
+            symbols_by_id = {s.id: s for s in symbols_unsorted}
+            symbols = [symbols_by_id[sid] for sid in symbol_ids if sid in symbols_by_id]
+
+            # 4. Construct context string
+            context_parts = []
+            for s in symbols:
+                context_parts.append(f"Symbol: {s.qualified_name} ({s.symbol_type})")
+                if s.signature:
+                    context_parts.append(f"Signature: {s.signature}")
+                if s.docstring:
+                    context_parts.append(f"Docstring: {s.docstring}")
+
+                dependencies = [e.target.qualified_name for e in s.outgoing_edges if e.target]
+                if dependencies:
+                    context_parts.append(f"Dependencies (Calls/Uses): {', '.join(dependencies)}")
+
+                dependents = [e.source.qualified_name for e in s.incoming_edges if e.source]
+                if dependents:
+                    context_parts.append(f"Dependents (Called by): {', '.join(dependents)}")
+
+                if s.source_code:
+                    code = s.source_code
+                    if len(code) > 1000:
+                        code = code[:1000] + "... (truncated)"
+                    context_parts.append(f"Code snippet:\n{code}")
+
+                context_parts.append("---")
+
+            context_str = "\n".join(context_parts)
+    finally:
+        await embedding_service.close()
 
     try:
         result = await llm_service.query(request.question, context_str)
