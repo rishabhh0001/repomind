@@ -155,12 +155,12 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     )
     symbols = symbols_result.scalars().all()
 
-    # Fetch edges
+    # Create a fast lookup map for symbol.id -> qualified_name
+    symbol_map = {s.id: s.qualified_name for s in symbols}
+
+    # Fetch edges (no selectinload needed anymore)
     edges_result = await db.execute(
-        select(Edge).where(Edge.repo_id == repo_id).options(
-            selectinload(Edge.source),
-            selectinload(Edge.target)
-        )
+        select(Edge).where(Edge.repo_id == repo_id)
     )
     edges = edges_result.scalars().all()
 
@@ -174,7 +174,7 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
             line_end=s.line_end,
             language=s.language,
             docstring=s.docstring,
-            parent_id=s.parent.qualified_name if s.parent else None,
+            parent_id=symbol_map.get(s.parent_id) if s.parent_id else None,
         )
         for s in symbols
     ]
@@ -182,13 +182,13 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     graph_edges = [
         GraphEdge(
             id=str(e.id),
-            source=e.source.qualified_name,
-            target=e.target.qualified_name,
+            source=symbol_map.get(e.source_id),
+            target=symbol_map.get(e.target_id),
             edge_type=e.edge_type.value,
             weight=e.weight,
         )
         for e in edges
-        if e.source and e.target
+        if e.source_id in symbol_map and e.target_id in symbol_map
     ]
 
     return GraphResponse(
