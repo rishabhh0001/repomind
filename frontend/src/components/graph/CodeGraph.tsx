@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, memo } from "react";
 import {
   ReactFlow,
   MiniMap,
@@ -19,7 +19,9 @@ import { getGraph } from "@/lib/api";
 import { useStore } from "@/lib/store";
 import { MaterialIcon } from "@/components/ui/material-icon";
 
-const CustomSymbolNode = ({ data, selected }: { data: any, selected?: boolean }) => {
+// ⚡ Bolt: Memoize custom nodes to prevent re-rendering them unless data/selected changes.
+// This significantly improves performance during panning and zooming in React Flow.
+const CustomSymbolNode = memo(({ data, selected }: { data: any, selected?: boolean }) => {
   const iconName = data.symbol_type === "class" ? "inventory_2" :
                    data.symbol_type === "function" ? "code" :
                    data.symbol_type === "endpoint" ? "api" : "database";
@@ -43,7 +45,8 @@ const CustomSymbolNode = ({ data, selected }: { data: any, selected?: boolean })
       <Handle type="source" position={Position.Bottom} className="w-2.5 h-2.5 !bg-indigo-500 !border-2 !border-[#111111] transition-transform group-hover:scale-125" />
     </div>
   );
-};
+});
+CustomSymbolNode.displayName = "CustomSymbolNode";
 
 const nodeTypes = {
   customSymbol: CustomSymbolNode,
