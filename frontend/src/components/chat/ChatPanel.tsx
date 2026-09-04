@@ -16,6 +16,39 @@ interface Message {
   flow?: any;
 }
 
+// ⚡ Bolt Optimization: Extracted ReactMarkdown components outside the render loop.
+// 🎯 Why: Defining components inline causes React to recreate new function references on every keystroke,
+// forcing a complete unmount/remount of the chat history DOM.
+// 📊 Impact: Eliminates massive unnecessary re-renders of the markdown tree during typing.
+const markdownComponents = {
+  p: ({node, ...props}: any) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
+  a: ({node, ...props}: any) => <a className="text-indigo-400 hover:underline font-medium" {...props} />,
+  ul: ({node, ...props}: any) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
+  ol: ({node, ...props}: any) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
+  li: ({node, ...props}: any) => <li className="" {...props} />,
+  h1: ({node, ...props}: any) => <h1 className="text-lg font-bold mb-2 mt-4 text-white" {...props} />,
+  h2: ({node, ...props}: any) => <h2 className="text-base font-bold mb-2 mt-3 text-white" {...props} />,
+  h3: ({node, ...props}: any) => <h3 className="text-sm font-bold mb-2 mt-2 text-zinc-200" {...props} />,
+  code: ({node, className, children, ...props}: any) => {
+    const match = /language-(\w+)/.exec(className || '');
+    const isInline = !match && !String(children).includes('\n');
+    return !isInline ? (
+      <div className="bg-[#0a0a0a] border border-white/10 rounded-lg my-3 overflow-hidden shadow-sm">
+        {match && <div className="bg-white/5 px-3 py-1.5 text-[11px] font-medium text-zinc-400 border-b border-white/5 uppercase tracking-wider">{match[1]}</div>}
+        <pre className="p-3 overflow-x-auto text-[12px] custom-scrollbar">
+          <code className={className} {...props}>
+            {children}
+          </code>
+        </pre>
+      </div>
+    ) : (
+      <code className="bg-black/30 border border-white/5 px-1.5 py-0.5 rounded-md text-indigo-300 font-mono text-[12px]" {...props}>
+        {children}
+      </code>
+    )
+  }
+};
+
 export default function ChatPanel({ repoId }: { repoId: number }) {
   const STORAGE_KEY = `repomind_chat_${repoId}`;
 
@@ -145,34 +178,7 @@ export default function ChatPanel({ repoId }: { repoId: number }) {
               <div className="text-[14px]">
                 <ReactMarkdown
                   remarkPlugins={[remarkGfm]}
-                  components={{
-                    p: ({node, ...props}: any) => <p className="mb-2 last:mb-0 leading-relaxed" {...props} />,
-                    a: ({node, ...props}: any) => <a className="text-indigo-400 hover:underline font-medium" {...props} />,
-                    ul: ({node, ...props}: any) => <ul className="list-disc pl-5 mb-3 space-y-1" {...props} />,
-                    ol: ({node, ...props}: any) => <ol className="list-decimal pl-5 mb-3 space-y-1" {...props} />,
-                    li: ({node, ...props}: any) => <li className="" {...props} />,
-                    h1: ({node, ...props}: any) => <h1 className="text-lg font-bold mb-2 mt-4 text-white" {...props} />,
-                    h2: ({node, ...props}: any) => <h2 className="text-base font-bold mb-2 mt-3 text-white" {...props} />,
-                    h3: ({node, ...props}: any) => <h3 className="text-sm font-bold mb-2 mt-2 text-zinc-200" {...props} />,
-                    code: ({node, className, children, ...props}: any) => {
-                      const match = /language-(\w+)/.exec(className || '');
-                      const isInline = !match && !String(children).includes('\n');
-                      return !isInline ? (
-                        <div className="bg-[#0a0a0a] border border-white/10 rounded-lg my-3 overflow-hidden shadow-sm">
-                          {match && <div className="bg-white/5 px-3 py-1.5 text-[11px] font-medium text-zinc-400 border-b border-white/5 uppercase tracking-wider">{match[1]}</div>}
-                          <pre className="p-3 overflow-x-auto text-[12px] custom-scrollbar">
-                            <code className={className} {...props}>
-                              {children}
-                            </code>
-                          </pre>
-                        </div>
-                      ) : (
-                        <code className="bg-black/30 border border-white/5 px-1.5 py-0.5 rounded-md text-indigo-300 font-mono text-[12px]" {...props}>
-                          {children}
-                        </code>
-                      )
-                    }
-                  }}
+                  components={markdownComponents}
                 >
                   {msg.content}
                 </ReactMarkdown>
