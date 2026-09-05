@@ -164,6 +164,9 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     )
     edges = edges_result.scalars().all()
 
+    # O(1) lookup to prevent N+1 queries when accessing s.parent
+    symbol_map = {s.id: s.qualified_name for s in symbols}
+
     nodes = [
         GraphNode(
             id=s.qualified_name,
@@ -174,7 +177,7 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
             line_end=s.line_end,
             language=s.language,
             docstring=s.docstring,
-            parent_id=s.parent.qualified_name if s.parent else None,
+            parent_id=symbol_map.get(s.parent_id) if s.parent_id else None,
         )
         for s in symbols
     ]
