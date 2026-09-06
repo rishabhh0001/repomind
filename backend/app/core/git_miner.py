@@ -7,10 +7,9 @@ and link commits to code symbols for temporal analysis.
 import logging
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
-from pydriller import Repository as PyDrillerRepo
 from git import Repo as GitRepo
+from pydriller import Repository as PyDrillerRepo
 
 logger = logging.getLogger(__name__)
 
@@ -214,7 +213,9 @@ class GitMiner:
             line_start=line_start,
             line_end=line_end,
             commits=sorted_commits,
-            introduction_commit=commits_seen.get(introduction_sha) if introduction_sha else None,
+            introduction_commit=commits_seen.get(introduction_sha)
+            if introduction_sha
+            else None,
         )
 
     def get_symbol_history(
@@ -233,7 +234,9 @@ class GitMiner:
 
         # Calculate risk score based on churn
         modification_count = len(blame.commits)
-        unique_authors = len(set(c.author_email for c in blame.commits if c.author_email))
+        unique_authors = len(
+            set(c.author_email for c in blame.commits if c.author_email)
+        )
         recency_days = 0
         if blame.commits:
             latest = max(

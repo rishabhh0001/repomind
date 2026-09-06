@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.indexer import Indexer
 from app.models.database import get_db
-from app.models.orm import RepoStatus, Repository
+from app.models.orm import Repository, RepoStatus
 from app.models.schemas import RepoImportRequest, RepoListResponse, RepoResponse
 
 router = APIRouter()
@@ -21,12 +21,14 @@ async def run_indexing_task(repo_id: int) -> None:
     async with async_session() as db:
         try:
             await indexer.index_repository(db, repo_id)
-        except Exception as e:
+        except Exception:
             # Error is already logged in the indexer
             pass
 
 
-@router.post("/import", response_model=RepoResponse, status_code=status.HTTP_202_ACCEPTED)
+@router.post(
+    "/import", response_model=RepoResponse, status_code=status.HTTP_202_ACCEPTED
+)
 async def import_repository(
     request: RepoImportRequest,
     background_tasks: BackgroundTasks,
@@ -34,12 +36,16 @@ async def import_repository(
 ) -> RepoResponse:
     """Import and index a repository."""
     # Check if already exists
-    result = await db.execute(
-        select(Repository).where(Repository.url == request.url)
-    )
+    result = await db.execute(select(Repository).where(Repository.url == request.url))
     existing = result.scalar_one_or_none()
     if existing:
-        if existing.status in (RepoStatus.CLONING, RepoStatus.PARSING, RepoStatus.BUILDING_GRAPH, RepoStatus.MINING_GIT, RepoStatus.EMBEDDING):
+        if existing.status in (
+            RepoStatus.CLONING,
+            RepoStatus.PARSING,
+            RepoStatus.BUILDING_GRAPH,
+            RepoStatus.MINING_GIT,
+            RepoStatus.EMBEDDING,
+        ):
             return existing
         # Re-index
         existing.status = RepoStatus.PENDING
@@ -71,7 +77,9 @@ async def list_repositories(db: AsyncSession = Depends(get_db)) -> RepoListRespo
 
 
 @router.get("/{repo_id}", response_model=RepoResponse)
-async def get_repository(repo_id: int, db: AsyncSession = Depends(get_db)) -> RepoResponse:
+async def get_repository(
+    repo_id: int, db: AsyncSession = Depends(get_db)
+) -> RepoResponse:
     """Get repository status and stats."""
     result = await db.execute(select(Repository).where(Repository.id == repo_id))
     repo = result.scalar_one_or_none()

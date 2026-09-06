@@ -26,15 +26,16 @@ async def query_repository(
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
 
+    from sqlalchemy.orm import selectinload
+
     from app.core.embeddings import EmbeddingService
     from app.models.orm import Embedding
-    from sqlalchemy.orm import selectinload
 
     embedding_service = EmbeddingService()
     try:
         # 1. Embed the query
         question_embedding = await embedding_service.generate(request.question)
-        
+
         # 2. Vector search the embeddings table for relevant symbols
         # Using cosine_distance (<=>) with pgvector to find top 10
         embeddings_result = await db.execute(
@@ -55,7 +56,7 @@ async def query_repository(
                 select(Symbol)
                 .options(
                     selectinload(Symbol.outgoing_edges).selectinload(Edge.target),
-                    selectinload(Symbol.incoming_edges).selectinload(Edge.source)
+                    selectinload(Symbol.incoming_edges).selectinload(Edge.source),
                 )
                 .where(Symbol.id.in_(symbol_ids))
             )
@@ -74,13 +75,21 @@ async def query_repository(
                 if s.docstring:
                     context_parts.append(f"Docstring: {s.docstring}")
 
-                dependencies = [e.target.qualified_name for e in s.outgoing_edges if e.target]
+                dependencies = [
+                    e.target.qualified_name for e in s.outgoing_edges if e.target
+                ]
                 if dependencies:
-                    context_parts.append(f"Dependencies (Calls/Uses): {', '.join(dependencies)}")
+                    context_parts.append(
+                        f"Dependencies (Calls/Uses): {', '.join(dependencies)}"
+                    )
 
-                dependents = [e.source.qualified_name for e in s.incoming_edges if e.source]
+                dependents = [
+                    e.source.qualified_name for e in s.incoming_edges if e.source
+                ]
                 if dependents:
-                    context_parts.append(f"Dependents (Called by): {', '.join(dependents)}")
+                    context_parts.append(
+                        f"Dependents (Called by): {', '.join(dependents)}"
+                    )
 
                 if s.source_code:
                     code = s.source_code
@@ -96,16 +105,16 @@ async def query_repository(
 
     try:
         result = await llm_service.query(request.question, context_str)
-        
+
         # Build response
         flow_nodes = []
         flow_edges = []
-        
+
         if result.get("flow"):
             flow = result["flow"]
             flow_nodes = flow.get("nodes", [])
             flow_edges = flow.get("edges", [])
-            
+
         return QueryResponse(
             answer=result["answer"],
             flow_nodes=flow_nodes,
@@ -113,7 +122,10 @@ async def query_repository(
             confidence=0.85,
         )
     except Exception as e:
-        import traceback
         import logging
-        logging.getLogger(__name__).error(f"Error querying LLM:\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
+        import traceback
+
+        logging.getLogger(__name__).error(
+            f"Error querying LLM:\n{traceback.format_exc()}"
+        )
+        raise HTTPException(status_code=500, detail=f"LLM Error: {e!s}")
