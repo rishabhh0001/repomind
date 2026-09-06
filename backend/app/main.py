@@ -19,7 +19,6 @@ async def lifespan(app: FastAPI):
     await init_db()
     yield
     # Shutdown
-    pass
 
 
 app = FastAPI(
@@ -30,7 +29,9 @@ app = FastAPI(
 )
 
 # CORS middleware
-origins = [origin.strip() for origin in settings.allowed_origins.split(",") if origin.strip()]
+origins = [
+    origin.strip() for origin in settings.allowed_origins.split(",") if origin.strip()
+]
 
 if "*" in origins or not origins:
     app.add_middleware(

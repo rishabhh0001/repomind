@@ -8,10 +8,10 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
+import tree_sitter_python as tspython
 import tree_sitter_typescript as tstypescript
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 logger = logging.getLogger(__name__)
 
@@ -44,17 +44,31 @@ LANGUAGE_NAMES: dict[str, str] = {
 
 # File patterns to skip
 SKIP_DIRS = {
-    "node_modules", ".git", "__pycache__", ".venv", "venv",
-    "dist", "build", ".next", ".tox", ".mypy_cache",
-    ".pytest_cache", "coverage", ".eggs", "egg-info",
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".venv",
+    "venv",
+    "dist",
+    "build",
+    ".next",
+    ".tox",
+    ".mypy_cache",
+    ".pytest_cache",
+    "coverage",
+    ".eggs",
+    "egg-info",
 }
 
 SKIP_FILES = {
-    "package-lock.json", "yarn.lock", "pnpm-lock.yaml",
+    "package-lock.json",
+    "yarn.lock",
+    "pnpm-lock.yaml",
 }
 
 
 # ─── Data Structures ────────────────────────────────────────────────────
+
 
 @dataclass
 class ParsedSymbol:
@@ -91,6 +105,7 @@ class ParsedFile:
 
 
 # ─── Parser ──────────────────────────────────────────────────────────────
+
 
 class CodeParser:
     """Multi-language code parser using Tree-sitter."""
@@ -151,9 +166,13 @@ class CodeParser:
         source_text = source.decode("utf-8", errors="replace")
 
         if language == "python":
-            symbols, imports = self._extract_python(tree.root_node, source_text, rel_path)
+            symbols, imports = self._extract_python(
+                tree.root_node, source_text, rel_path
+            )
         elif language in ("javascript", "typescript"):
-            symbols, imports = self._extract_js_ts(tree.root_node, source_text, rel_path, language)
+            symbols, imports = self._extract_js_ts(
+                tree.root_node, source_text, rel_path, language
+            )
         else:
             return None
 
@@ -187,10 +206,7 @@ class CodeParser:
         module_name = file_path.replace("/", ".").rsplit(".", 1)[0]
 
         for child in root.children:
-            if child.type == "import_statement":
-                imp = self._node_text(child, source)
-                imports.append(imp)
-            elif child.type == "import_from_statement":
+            if child.type == "import_statement" or child.type == "import_from_statement":
                 imp = self._node_text(child, source)
                 imports.append(imp)
             elif child.type == "class_definition":
@@ -198,14 +214,18 @@ class CodeParser:
                 if cls:
                     symbols.append(cls)
             elif child.type == "function_definition":
-                func = self._extract_python_function(child, source, file_path, module_name)
+                func = self._extract_python_function(
+                    child, source, file_path, module_name
+                )
                 if func:
                     symbols.append(func)
             elif child.type == "decorated_definition":
                 # Handle decorated classes/functions
                 for sub in child.children:
                     if sub.type == "class_definition":
-                        cls = self._extract_python_class(sub, source, file_path, module_name)
+                        cls = self._extract_python_class(
+                            sub, source, file_path, module_name
+                        )
                         if cls:
                             # Extract decorator info
                             decorators = [
@@ -231,8 +251,14 @@ class CodeParser:
                                 d_keyword in d
                                 for d in decorators
                                 for d_keyword in [
-                                    "@app.", "@router.", "@api.",
-                                    ".get(", ".post(", ".put(", ".delete(", ".patch(",
+                                    "@app.",
+                                    "@router.",
+                                    "@api.",
+                                    ".get(",
+                                    ".post(",
+                                    ".put(",
+                                    ".delete(",
+                                    ".patch(",
                                 ]
                             ):
                                 func.symbol_type = "endpoint"
@@ -319,7 +345,11 @@ class CodeParser:
 
         # Extract parameters
         params_node = node.child_by_field_name("parameters")
-        signature = f"def {name}{self._node_text(params_node, source)}" if params_node else f"def {name}()"
+        signature = (
+            f"def {name}{self._node_text(params_node, source)}"
+            if params_node
+            else f"def {name}()"
+        )
 
         # Extract return type
         return_node = node.child_by_field_name("return_type")
@@ -378,12 +408,16 @@ class CodeParser:
                 imports.append(self._node_text(child, source))
 
             elif child.type in ("class_declaration", "class"):
-                cls = self._extract_js_class(child, source, file_path, module_name, language)
+                cls = self._extract_js_class(
+                    child, source, file_path, module_name, language
+                )
                 if cls:
                     symbols.append(cls)
 
             elif child.type in ("function_declaration", "function"):
-                func = self._extract_js_function(child, source, file_path, module_name, language)
+                func = self._extract_js_function(
+                    child, source, file_path, module_name, language
+                )
                 if func:
                     symbols.append(func)
 
@@ -391,11 +425,15 @@ class CodeParser:
                 # Unwrap exported declarations
                 for sub in child.children:
                     if sub.type in ("class_declaration", "class"):
-                        cls = self._extract_js_class(sub, source, file_path, module_name, language)
+                        cls = self._extract_js_class(
+                            sub, source, file_path, module_name, language
+                        )
                         if cls:
                             symbols.append(cls)
                     elif sub.type in ("function_declaration", "function"):
-                        func = self._extract_js_function(sub, source, file_path, module_name, language)
+                        func = self._extract_js_function(
+                            sub, source, file_path, module_name, language
+                        )
                         if func:
                             symbols.append(func)
                     elif sub.type == "lexical_declaration":
@@ -404,7 +442,11 @@ class CodeParser:
                             if decl.type == "variable_declarator":
                                 vname = decl.child_by_field_name("name")
                                 value = decl.child_by_field_name("value")
-                                if vname and value and value.type in ("arrow_function", "function"):
+                                if (
+                                    vname
+                                    and value
+                                    and value.type in ("arrow_function", "function")
+                                ):
                                     func = self._extract_js_arrow_function(
                                         decl, source, file_path, module_name, language
                                     )
@@ -424,7 +466,9 @@ class CodeParser:
                                 symbols.append(func)
 
             elif child.type in ("interface_declaration", "type_alias_declaration"):
-                ts_type = self._extract_ts_type(child, source, file_path, module_name, language)
+                ts_type = self._extract_ts_type(
+                    child, source, file_path, module_name, language
+                )
                 if ts_type:
                     symbols.append(ts_type)
 
@@ -489,7 +533,8 @@ class CodeParser:
             file_path=file_path,
             line_start=node.start_point[0] + 1,
             line_end=node.end_point[0] + 1,
-            signature=f"class {name}" + (f" extends {', '.join(bases)}" if bases else ""),
+            signature=f"class {name}"
+            + (f" extends {', '.join(bases)}" if bases else ""),
             source_code=self._node_text(node, source),
             parent_qualified_name=module_name,
             children=methods,

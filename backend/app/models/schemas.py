@@ -3,10 +3,10 @@
 from datetime import datetime
 from typing import Any
 
-from pydantic import BaseModel, Field, HttpUrl, field_validator
-
+from pydantic import BaseModel, Field, field_validator
 
 # ─── Repository ──────────────────────────────────────────────────────────
+
 
 class RepoImportRequest(BaseModel):
     """Request to import a repository."""
@@ -38,6 +38,7 @@ class RepoResponse(BaseModel):
             if not v:
                 return []
             import json
+
             try:
                 return json.loads(v)
             except json.JSONDecodeError:
@@ -57,6 +58,7 @@ class RepoListResponse(BaseModel):
 
 
 # ─── Query ───────────────────────────────────────────────────────────────
+
 
 class QueryRequest(BaseModel):
     """Natural language query about a repository."""
@@ -98,6 +100,7 @@ class QueryResponse(BaseModel):
 
 # ─── Graph ───────────────────────────────────────────────────────────────
 
+
 class GraphNode(BaseModel):
     """A node in the code graph."""
 
@@ -133,6 +136,7 @@ class GraphResponse(BaseModel):
 
 # ─── Node Detail ─────────────────────────────────────────────────────────
 
+
 class SymbolDetail(BaseModel):
     """Detailed information about a code symbol."""
 
@@ -162,6 +166,7 @@ class SymbolDetail(BaseModel):
 
 
 # ─── Git History ─────────────────────────────────────────────────────────
+
 
 class CommitResponse(BaseModel):
     """Git commit information."""
@@ -193,6 +198,7 @@ class SymbolHistoryResponse(BaseModel):
 
 
 # ─── Progress ────────────────────────────────────────────────────────────
+
 
 class IndexingProgress(BaseModel):
     """Real-time indexing progress update."""

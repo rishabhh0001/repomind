@@ -1,0 +1,3 @@
+## 2024-05-18 - Avoid N+1 and MissingGreenlet with SQLAlchemy Async
+**Learning:** In async SQLAlchemy endpoints (like `graph.py` returning full repo graphs), using lazy-loaded relationships (e.g. `s.parent.qualified_name`) inside synchronous list comprehensions triggers implicit database calls, which cause `MissingGreenlet` errors and significant N+1 overhead. Also, using `selectinload` on edges for `source` and `target` when those symbols are already fetched separately duplicates data in memory.
+**Action:** When fetching large graphs, build an O(1) lookup dictionary (e.g. `symbol_dict = {s.id: s for s in symbols}`) and map relationships manually via foreign keys (`parent_id`, `source_id`, `target_id`) in Python memory instead of relying on ORM relationship properties.
