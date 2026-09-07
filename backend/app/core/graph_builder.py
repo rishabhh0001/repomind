@@ -5,7 +5,6 @@ where nodes are code symbols and edges represent relationships
 (calls, imports, inheritance, etc.).
 """
 
-import json
 import logging
 from dataclasses import dataclass, field
 

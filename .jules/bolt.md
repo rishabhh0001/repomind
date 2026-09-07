@@ -1,0 +1,3 @@
+## 2025-02-23 - Async SQLAlchemy MissingGreenlet and N+1 in Graph Building
+**Learning:** In the RepoMind backend's FastAPI/SQLAlchemy async setup, accessing related ORM attributes (like `symbol.parent` or `edge.source`) inside list comprehensions within synchronous routes leads to N+1 query overhead or `MissingGreenlet` errors.
+**Action:** Avoid synchronous lazy loading. Instead, pre-fetch all necessary related records into memory and build an O(1) dictionary mapping (e.g., `symbol_by_id = {s.id: s for s in symbols}`) to resolve relationships directly in Python, maintaining async safety and improving query performance.
