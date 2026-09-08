@@ -1,0 +1,3 @@
+## 2026-09-08 - [Avoid Lazy-Loading in Async Contexts]
+**Learning:** In the backend's async SQLAlchemy setup, lazy-loading relationship properties within synchronous contexts (like list comprehensions) causes N+1 query overhead and can trigger `MissingGreenlet` errors. Using `selectinload` is not always optimal if you just need referencing IDs.
+**Action:** Instead of eager loading (`selectinload`) entire relationships or relying on lazy loading, pre-fetch the necessary entities and create an O(1) dictionary mapping in Python memory (e.g., `symbol_map = {s.id: s for s in symbols}`) to resolve references efficiently without extra queries.
