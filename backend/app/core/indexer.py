@@ -6,12 +6,11 @@ mines git history, generates embeddings, and stores everything in PostgreSQL.
 
 import json
 import logging
-import os
 import shutil
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
+from typing import Callable
 
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -29,7 +28,6 @@ from app.models.orm import (
     RepoStatus,
     Repository,
     Symbol,
-    SymbolCommit,
     SymbolType,
 )
 
@@ -106,7 +104,9 @@ class Indexer:
             repo_path = await self._ensure_cloned(repo)
 
             # Step 2: Parse
-            await progress.update("parsing", 0.15, "Parsing source code with Tree-sitter...")
+            await progress.update(
+                "parsing", 0.15, "Parsing source code with Tree-sitter..."
+            )
             repo.status = RepoStatus.PARSING
             await db.commit()
 
@@ -114,9 +114,10 @@ class Indexer:
             languages = list(set(pf.language for pf in parsed_files))
 
             await progress.update(
-                "parsing", 0.30,
+                "parsing",
+                0.30,
                 f"Parsed {len(parsed_files)} files, "
-                f"{sum(len(pf.symbols) for pf in parsed_files)} symbols"
+                f"{sum(len(pf.symbols) for pf in parsed_files)} symbols",
             )
 
             # Step 3: Build graph
@@ -127,12 +128,15 @@ class Indexer:
             graph = self.graph_builder.build(parsed_files)
 
             await progress.update(
-                "building_graph", 0.45,
-                f"Graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges"
+                "building_graph",
+                0.45,
+                f"Graph: {len(graph.nodes)} nodes, {len(graph.edges)} edges",
             )
 
             # Step 4: Store symbols and edges in DB
-            await progress.update("building_graph", 0.50, "Storing symbols in database...")
+            await progress.update(
+                "building_graph", 0.50, "Storing symbols in database..."
+            )
             await self._clear_old_data(db, repo_id)
             symbol_id_map = await self._store_symbols(db, repo_id, graph)
             await self._store_edges(db, repo_id, graph, symbol_id_map)
@@ -146,9 +150,7 @@ class Indexer:
             commits = git_miner.mine_commits(max_commits=100)
             await self._store_commits(db, repo_id, commits)
 
-            await progress.update(
-                "mining_git", 0.70, f"Mined {len(commits)} commits"
-            )
+            await progress.update("mining_git", 0.70, f"Mined {len(commits)} commits")
 
             # Step 6: Generate embeddings
             await progress.update("embedding", 0.75, "Generating embeddings...")
@@ -249,9 +251,7 @@ class Indexer:
         for node in graph.nodes.values():
             if node.parent_id and node.parent_id in symbol_id_map:
                 symbol_id = symbol_id_map[node.id]
-                result = await db.execute(
-                    select(Symbol).where(Symbol.id == symbol_id)
-                )
+                result = await db.execute(select(Symbol).where(Symbol.id == symbol_id))
                 symbol = result.scalar_one()
                 symbol.parent_id = symbol_id_map[node.parent_id]
 
@@ -326,7 +326,9 @@ class Indexer:
         — skips modules and simple imports.
         """
         embeddable_types = {"class", "function", "method", "endpoint", "interface"}
-        symbols_to_embed: list[tuple[str, int, str]] = []  # (qualified_name, db_id, text)
+        symbols_to_embed: list[
+            tuple[str, int, str]
+        ] = []  # (qualified_name, db_id, text)
 
         for node in graph.nodes.values():
             if node.symbol_type not in embeddable_types:
