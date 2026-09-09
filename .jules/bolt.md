@@ -1,0 +1,3 @@
+## 2024-05-14 - Optimize Graph Serialization in FastAPI Endpoint
+**Learning:** In async SQLAlchemy setups, accessing unloaded relationship attributes (like `s.parent` or `e.source` during large list comprehensions) can result in N+1 query overhead or `MissingGreenletError`. While `selectinload` fixes the error, it's inefficient when serializing large collections since we've often already loaded the related objects individually or can manually link them.
+**Action:** When returning extensive graphs or lists of records that depend on self-referential or known related tables, build an O(1) in-memory dictionary mapping (`symbol_map = {s.id: s for s in symbols}`) and map relationships explicitly in Python instead of relying on SQLAlchemy's lazy evaluation or join-heavy loads.
