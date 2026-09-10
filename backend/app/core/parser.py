@@ -8,10 +8,10 @@ import logging
 from dataclasses import dataclass, field
 from pathlib import Path
 
-import tree_sitter_python as tspython
 import tree_sitter_javascript as tsjavascript
+import tree_sitter_python as tspython
 import tree_sitter_typescript as tstypescript
-from tree_sitter import Language, Parser, Node
+from tree_sitter import Language, Node, Parser
 
 logger = logging.getLogger(__name__)
 
@@ -187,10 +187,7 @@ class CodeParser:
         module_name = file_path.replace("/", ".").rsplit(".", 1)[0]
 
         for child in root.children:
-            if child.type == "import_statement":
-                imp = self._node_text(child, source)
-                imports.append(imp)
-            elif child.type == "import_from_statement":
+            if child.type == "import_statement" or child.type == "import_from_statement":
                 imp = self._node_text(child, source)
                 imports.append(imp)
             elif child.type == "class_definition":

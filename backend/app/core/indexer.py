@@ -6,14 +6,13 @@ mines git history, generates embeddings, and stores everything in PostgreSQL.
 
 import json
 import logging
-import os
 import shutil
 import subprocess
+from collections.abc import Callable
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable
 
-from sqlalchemy import select, delete
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
@@ -26,10 +25,9 @@ from app.models.orm import (
     Edge,
     EdgeType,
     Embedding,
-    RepoStatus,
     Repository,
+    RepoStatus,
     Symbol,
-    SymbolCommit,
     SymbolType,
 )
 
