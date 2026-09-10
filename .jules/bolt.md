@@ -1,0 +1,3 @@
+## 2026-09-10 - Avoid selectinload for Large Graph Serializations
+**Learning:** `selectinload` causes memory overhead and is inefficient for large graph serializations in this architecture, while omitting it completely causes N+1 query overhead or `MissingGreenlet` errors due to SQLAlchemy relationship lazy-loading in synchronous list comprehensions.
+**Action:** When serializing large lists of relationships (e.g. constructing graph nodes/edges from DB models), pre-fetch all needed models and use O(1) Python dictionary lookups in memory to map foreign key IDs to objects, rather than relying on `selectinload` or lazy-loading properties.

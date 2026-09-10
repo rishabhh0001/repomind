@@ -21,7 +21,6 @@ async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit
 class Base(DeclarativeBase):
     """Base class for all ORM models."""
 
-    pass
 
 
 async def get_db() -> AsyncSession:
@@ -39,8 +38,8 @@ async def get_db() -> AsyncSession:
 
 async def init_db() -> None:
     """Create all tables and install pgvector extension."""
-    import logging
     import asyncio
+    import logging
     logger = logging.getLogger(__name__)
     
     max_retries = 3
