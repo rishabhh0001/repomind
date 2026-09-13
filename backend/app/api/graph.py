@@ -6,14 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.database import get_db
-from app.models.orm import Commit, Edge, Repository, Symbol, SymbolCommit
+from app.models.orm import Edge, Repository, Symbol, SymbolCommit
 from app.models.schemas import (
-    CommitResponse,
     GraphEdge,
     GraphNode,
     GraphResponse,
     SymbolDetail,
-    SymbolHistoryResponse,
 )
 
 router = APIRouter()
@@ -155,12 +153,14 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     )
     symbols = symbols_result.scalars().all()
 
-    # Fetch edges
+    # Pre-build dictionary mapping symbol IDs to symbol objects for O(1) lookups.
+    # This avoids N+1 query problems and is significantly faster than using
+    # selectinload() on Edge.source and Edge.target for large graph serializations.
+    symbol_dict = {s.id: s for s in symbols}
+
+    # Fetch edges (without selectinload for source/target)
     edges_result = await db.execute(
-        select(Edge).where(Edge.repo_id == repo_id).options(
-            selectinload(Edge.source),
-            selectinload(Edge.target)
-        )
+        select(Edge).where(Edge.repo_id == repo_id)
     )
     edges = edges_result.scalars().all()
 
@@ -174,7 +174,7 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
             line_end=s.line_end,
             language=s.language,
             docstring=s.docstring,
-            parent_id=s.parent.qualified_name if s.parent else None,
+            parent_id=symbol_dict[s.parent_id].qualified_name if s.parent_id and s.parent_id in symbol_dict else None,
         )
         for s in symbols
     ]
@@ -182,13 +182,13 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
     graph_edges = [
         GraphEdge(
             id=str(e.id),
-            source=e.source.qualified_name,
-            target=e.target.qualified_name,
+            source=symbol_dict[e.source_id].qualified_name,
+            target=symbol_dict[e.target_id].qualified_name,
             edge_type=e.edge_type.value,
             weight=e.weight,
         )
         for e in edges
-        if e.source and e.target
+        if e.source_id in symbol_dict and e.target_id in symbol_dict
     ]
 
     return GraphResponse(
