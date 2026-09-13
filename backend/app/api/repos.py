@@ -21,7 +21,7 @@ async def run_indexing_task(repo_id: int) -> None:
     async with async_session() as db:
         try:
             await indexer.index_repository(db, repo_id)
-        except Exception as e:
+        except Exception:
             # Error is already logged in the indexer
             pass
 
