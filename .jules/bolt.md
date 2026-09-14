@@ -1,0 +1,3 @@
+## 2024-05-24 - [Avoid N+1 queries during large graph serialization]
+**Learning:** During serialization of the large `edges` data, using lazy-loading property like `edge.source.qualified_name` and `edge.target.qualified_name` leads to an N+1 query issue or MissingGreenlet error in an async SQLAlchemy context. While `selectinload` solves this, it can be significantly inefficient when building large O(N) graph representations.
+**Action:** Instead of `selectinload(Edge.source)` and `selectinload(Edge.target)`, explicitly pre-fetch all symbols and create a Python memory dictionary mapping (e.g. `symbol.id` -> `symbol.qualified_name`). Then use this O(1) lookup dictionary when serializing edges in Python to boost performance.
