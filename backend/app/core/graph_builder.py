@@ -5,7 +5,6 @@ where nodes are code symbols and edges represent relationships
 (calls, imports, inheritance, etc.).
 """
 
-import json
 import logging
 from dataclasses import dataclass, field
 
@@ -186,7 +185,10 @@ class GraphBuilder:
 
         # Step 2: Containment edges
         for symbol in all_symbols:
-            if symbol.parent_qualified_name and symbol.parent_qualified_name in graph.nodes:
+            if (
+                symbol.parent_qualified_name
+                and symbol.parent_qualified_name in graph.nodes
+            ):
                 graph.add_edge(
                     GraphEdge(
                         source=symbol.parent_qualified_name,
@@ -197,7 +199,11 @@ class GraphBuilder:
 
         # Step 3: Call edges
         for symbol in all_symbols:
-            module_name = symbol.qualified_name.rsplit(".", 1)[0] if "." in symbol.qualified_name else ""
+            module_name = (
+                symbol.qualified_name.rsplit(".", 1)[0]
+                if "." in symbol.qualified_name
+                else ""
+            )
             for call in symbol.calls:
                 target = graph.resolve_name(call, context_module=module_name)
                 if target:
@@ -212,7 +218,11 @@ class GraphBuilder:
         # Step 4: Inheritance edges
         for symbol in all_symbols:
             if symbol.bases:
-                module_name = symbol.qualified_name.rsplit(".", 1)[0] if "." in symbol.qualified_name else ""
+                module_name = (
+                    symbol.qualified_name.rsplit(".", 1)[0]
+                    if "." in symbol.qualified_name
+                    else ""
+                )
                 for base in symbol.bases:
                     target = graph.resolve_name(base, context_module=module_name)
                     if target:

@@ -6,14 +6,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.models.database import get_db
-from app.models.orm import Commit, Edge, Repository, Symbol, SymbolCommit
+from app.models.orm import Edge, Repository, Symbol, SymbolCommit
 from app.models.schemas import (
-    CommitResponse,
     GraphEdge,
     GraphNode,
     GraphResponse,
     SymbolDetail,
-    SymbolHistoryResponse,
 )
 
 router = APIRouter()
@@ -21,13 +19,10 @@ router = APIRouter()
 
 async def _fetch_symbol_detail(query: str, db: AsyncSession) -> SymbolDetail:
     """Fetch symbol detail with robust fallback strategies."""
-    stmt = (
-        select(Symbol)
-        .options(
-            selectinload(Symbol.outgoing_edges).selectinload(Edge.target),
-            selectinload(Symbol.incoming_edges).selectinload(Edge.source),
-            selectinload(Symbol.symbol_commits).selectinload(SymbolCommit.commit),
-        )
+    stmt = select(Symbol).options(
+        selectinload(Symbol.outgoing_edges).selectinload(Edge.target),
+        selectinload(Symbol.incoming_edges).selectinload(Edge.source),
+        selectinload(Symbol.symbol_commits).selectinload(SymbolCommit.commit),
     )
 
     clean_query = query.strip()
@@ -90,17 +85,21 @@ async def _fetch_symbol_detail(query: str, db: AsyncSession) -> SymbolDetail:
     if symbol.symbol_commits:
         for sc in symbol.symbol_commits:
             if sc.commit:
-                commits.append({
-                    "sha": sc.commit.sha,
-                    "author_name": sc.commit.author_name or "Unknown",
-                    "author_email": sc.commit.author_email or "",
-                    "message": sc.commit.message or "",
-                    "committed_at": sc.commit.committed_at.isoformat() if sc.commit.committed_at else None,
-                    "is_introduction": bool(sc.is_introduction),
-                    "files_changed": sc.commit.files_changed or 0,
-                    "insertions": sc.commit.insertions or 0,
-                    "deletions": sc.commit.deletions or 0,
-                })
+                commits.append(
+                    {
+                        "sha": sc.commit.sha,
+                        "author_name": sc.commit.author_name or "Unknown",
+                        "author_email": sc.commit.author_email or "",
+                        "message": sc.commit.message or "",
+                        "committed_at": sc.commit.committed_at.isoformat()
+                        if sc.commit.committed_at
+                        else None,
+                        "is_introduction": bool(sc.is_introduction),
+                        "files_changed": sc.commit.files_changed or 0,
+                        "insertions": sc.commit.insertions or 0,
+                        "deletions": sc.commit.deletions or 0,
+                    }
+                )
 
     return SymbolDetail(
         id=symbol.id,
@@ -123,6 +122,7 @@ async def _fetch_symbol_detail(query: str, db: AsyncSession) -> SymbolDetail:
 # NOTE: Specific routes MUST come before /{repo_id} to prevent FastAPI
 # from matching "node-detail" or "nodes" as an integer repo_id (→ 422).
 
+
 @router.get("/node-detail", response_model=SymbolDetail)
 async def get_node_detail_by_query(
     id_or_name: str, db: AsyncSession = Depends(get_db)
@@ -143,25 +143,21 @@ async def get_node_detail(
 async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphResponse:
     """Get the full code graph for a repository."""
     # Verify repo
-    repo_result = await db.execute(
-        select(Repository).where(Repository.id == repo_id)
-    )
+    repo_result = await db.execute(select(Repository).where(Repository.id == repo_id))
     if not repo_result.scalar_one_or_none():
         raise HTTPException(status_code=404, detail="Repository not found")
 
     # Fetch symbols
-    symbols_result = await db.execute(
-        select(Symbol).where(Symbol.repo_id == repo_id)
-    )
+    symbols_result = await db.execute(select(Symbol).where(Symbol.repo_id == repo_id))
     symbols = symbols_result.scalars().all()
 
+    # ⚡ Bolt: Build O(1) dictionary mapping for symbol ID to qualified_name
+    # This avoids N+1 lazy-loading queries during graph serialization
+    symbol_dict = {s.id: s.qualified_name for s in symbols}
+
     # Fetch edges
-    edges_result = await db.execute(
-        select(Edge).where(Edge.repo_id == repo_id).options(
-            selectinload(Edge.source),
-            selectinload(Edge.target)
-        )
-    )
+    # ⚡ Bolt: Removed selectinload(Edge.source/target) as we can map them in Python memory
+    edges_result = await db.execute(select(Edge).where(Edge.repo_id == repo_id))
     edges = edges_result.scalars().all()
 
     nodes = [
@@ -174,22 +170,26 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
             line_end=s.line_end,
             language=s.language,
             docstring=s.docstring,
-            parent_id=s.parent.qualified_name if s.parent else None,
+            parent_id=symbol_dict.get(s.parent_id) if s.parent_id else None,
         )
         for s in symbols
     ]
 
-    graph_edges = [
-        GraphEdge(
-            id=str(e.id),
-            source=e.source.qualified_name,
-            target=e.target.qualified_name,
-            edge_type=e.edge_type.value,
-            weight=e.weight,
-        )
-        for e in edges
-        if e.source and e.target
-    ]
+    graph_edges = []
+    for e in edges:
+        source_name = symbol_dict.get(e.source_id)
+        target_name = symbol_dict.get(e.target_id)
+
+        if source_name and target_name:
+            graph_edges.append(
+                GraphEdge(
+                    id=str(e.id),
+                    source=source_name,
+                    target=target_name,
+                    edge_type=e.edge_type.value,
+                    weight=e.weight,
+                )
+            )
 
     return GraphResponse(
         repo_id=repo_id,
@@ -200,4 +200,3 @@ async def get_graph(repo_id: int, db: AsyncSession = Depends(get_db)) -> GraphRe
             "edges": len(graph_edges),
         },
     )
-

@@ -35,7 +35,9 @@ class EmbeddingService:
         else:
             raise ValueError(f"Unknown embedding provider: {self.provider}")
 
-    async def generate_batch(self, texts: list[str], batch_size: int = 20) -> list[list[float]]:
+    async def generate_batch(
+        self, texts: list[str], batch_size: int = 20
+    ) -> list[list[float]]:
         """Generate embeddings for multiple texts in batches."""
         all_embeddings: list[list[float]] = []
 
@@ -55,7 +57,9 @@ class EmbeddingService:
                 raise ValueError(f"Unknown embedding provider: {self.provider}")
 
             all_embeddings.extend(embeddings)
-            logger.info(f"Embedded batch {i // batch_size + 1}/{(len(texts) + batch_size - 1) // batch_size}")
+            logger.info(
+                f"Embedded batch {i // batch_size + 1}/{(len(texts) + batch_size - 1) // batch_size}"
+            )
 
         return all_embeddings
 
@@ -68,7 +72,9 @@ class EmbeddingService:
         parts = []
 
         # Symbol identity
-        parts.append(f"{symbol.get('symbol_type', 'symbol')}: {symbol.get('qualified_name', symbol.get('name', ''))}")
+        parts.append(
+            f"{symbol.get('symbol_type', 'symbol')}: {symbol.get('qualified_name', symbol.get('name', ''))}"
+        )
 
         # Signature
         if symbol.get("signature"):
