@@ -7,7 +7,6 @@ and link commits to code symbols for temporal analysis.
 import logging
 import re
 from datetime import datetime, timezone
-from pathlib import Path
 
 from pydriller import Repository as PyDrillerRepo
 from git import Repo as GitRepo
