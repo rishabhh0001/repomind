@@ -104,10 +104,14 @@ class Symbol(Base):
     __tablename__ = "symbols"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    repo_id = Column(Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False)
+    repo_id = Column(
+        Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
+    )
 
     name = Column(String(512), nullable=False)
-    qualified_name = Column(String(1024), nullable=False)  # e.g., "module.ClassName.method"
+    qualified_name = Column(
+        String(1024), nullable=False
+    )  # e.g., "module.ClassName.method"
     symbol_type = Column(Enum(SymbolType), nullable=False)
     language = Column(String(50), nullable=False)
 
@@ -122,16 +126,24 @@ class Symbol(Base):
     source_code = Column(Text, nullable=True)
 
     # Hierarchy
-    parent_id = Column(Integer, ForeignKey("symbols.id", ondelete="SET NULL"), nullable=True)
+    parent_id = Column(
+        Integer, ForeignKey("symbols.id", ondelete="SET NULL"), nullable=True
+    )
 
     # Relationships
     repository = relationship("Repository", back_populates="symbols")
     parent = relationship("Symbol", remote_side="Symbol.id", backref="children")
     outgoing_edges = relationship(
-        "Edge", foreign_keys="Edge.source_id", back_populates="source", cascade="all, delete"
+        "Edge",
+        foreign_keys="Edge.source_id",
+        back_populates="source",
+        cascade="all, delete",
     )
     incoming_edges = relationship(
-        "Edge", foreign_keys="Edge.target_id", back_populates="target", cascade="all, delete"
+        "Edge",
+        foreign_keys="Edge.target_id",
+        back_populates="target",
+        cascade="all, delete",
     )
     symbol_commits = relationship(
         "SymbolCommit", back_populates="symbol", cascade="all, delete"
@@ -150,16 +162,26 @@ class Edge(Base):
     __tablename__ = "edges"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    repo_id = Column(Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False)
-    source_id = Column(Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False)
-    target_id = Column(Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False)
+    repo_id = Column(
+        Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
+    )
+    source_id = Column(
+        Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False
+    )
+    target_id = Column(
+        Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False
+    )
     edge_type = Column(Enum(EdgeType), nullable=False)
     weight = Column(Float, default=1.0)
     metadata_json = Column(Text, nullable=True)  # Additional context as JSON
 
     # Relationships
-    source = relationship("Symbol", foreign_keys=[source_id], back_populates="outgoing_edges")
-    target = relationship("Symbol", foreign_keys=[target_id], back_populates="incoming_edges")
+    source = relationship(
+        "Symbol", foreign_keys=[source_id], back_populates="outgoing_edges"
+    )
+    target = relationship(
+        "Symbol", foreign_keys=[target_id], back_populates="incoming_edges"
+    )
 
     __table_args__ = (
         Index("idx_edges_source", "source_id"),
@@ -176,7 +198,10 @@ class Embedding(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     symbol_id = Column(
-        Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False, unique=True
+        Integer,
+        ForeignKey("symbols.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
     )
     content = Column(Text, nullable=False)  # The text that was embedded
     embedding = Column(Vector(settings.embedding_dimension), nullable=False)
@@ -191,7 +216,9 @@ class Commit(Base):
     __tablename__ = "commits"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    repo_id = Column(Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False)
+    repo_id = Column(
+        Integer, ForeignKey("repositories.id", ondelete="CASCADE"), nullable=False
+    )
 
     sha = Column(String(40), nullable=False)
     author_name = Column(String(255), nullable=True)
@@ -223,9 +250,15 @@ class SymbolCommit(Base):
     __tablename__ = "symbol_commits"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    symbol_id = Column(Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False)
-    commit_id = Column(Integer, ForeignKey("commits.id", ondelete="CASCADE"), nullable=False)
-    is_introduction = Column(Boolean, default=False)  # Was this the commit that introduced the symbol?
+    symbol_id = Column(
+        Integer, ForeignKey("symbols.id", ondelete="CASCADE"), nullable=False
+    )
+    commit_id = Column(
+        Integer, ForeignKey("commits.id", ondelete="CASCADE"), nullable=False
+    )
+    is_introduction = Column(
+        Boolean, default=False
+    )  # Was this the commit that introduced the symbol?
     lines_changed = Column(Integer, default=0)
 
     # Relationships
