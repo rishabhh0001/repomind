@@ -1,0 +1,3 @@
+## 2025-02-23 - [O(1) Memory Lookup over SQLAlchemy relations for Large Graphs]
+**Learning:** In SQLAlchemy async code processing large graphs (1000+ nodes), using `.options(selectinload(...))` is extremely slow compared to explicit memory lookups. In `get_graph`, replacing `s.parent` and `selectinload(Edge.source)` with an O(1) dictionary mapped from node IDs decreased queries from hundreds of N+1 batches to just 3 queries, cutting execution time for a 1500 node graph drastically.
+**Action:** Always pre-fetch nodes into a dictionary in memory when serializing large collections of hierarchical or graph data rather than relying on SQLAlchemy relationship loading (even eager loading).
