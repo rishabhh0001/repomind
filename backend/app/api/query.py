@@ -26,9 +26,10 @@ async def query_repository(
     if not repo:
         raise HTTPException(status_code=404, detail="Repository not found")
 
+    from sqlalchemy.orm import selectinload
+
     from app.core.embeddings import EmbeddingService
     from app.models.orm import Embedding
-    from sqlalchemy.orm import selectinload
 
     embedding_service = EmbeddingService()
     try:
@@ -113,7 +114,7 @@ async def query_repository(
             confidence=0.85,
         )
     except Exception as e:
-        import traceback
         import logging
+        import traceback
         logging.getLogger(__name__).error(f"Error querying LLM:\n{traceback.format_exc()}")
-        raise HTTPException(status_code=500, detail=f"LLM Error: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"LLM Error: {e!s}")
