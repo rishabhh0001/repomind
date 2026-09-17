@@ -330,8 +330,7 @@ Also provide a human-readable summary of the impact."""
         elif json_str.startswith("```"):
             json_str = json_str[3:]
             
-        if json_str.endswith("```"):
-            json_str = json_str[:-3]
+        json_str = json_str.removesuffix("```")
             
         json_str = json_str.strip()
         

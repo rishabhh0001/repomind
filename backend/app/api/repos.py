@@ -6,7 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.indexer import Indexer
 from app.models.database import get_db
-from app.models.orm import RepoStatus, Repository
+from app.models.orm import Repository, RepoStatus
 from app.models.schemas import RepoImportRequest, RepoListResponse, RepoResponse
 
 router = APIRouter()
@@ -21,7 +21,7 @@ async def run_indexing_task(repo_id: int) -> None:
     async with async_session() as db:
         try:
             await indexer.index_repository(db, repo_id)
-        except Exception as e:
+        except Exception:
             # Error is already logged in the indexer
             pass
 
